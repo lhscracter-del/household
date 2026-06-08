@@ -1,0 +1,34 @@
+from datetime import date
+from typing import Optional
+from pydantic import BaseModel
+from app.models.expense import PaymentMethod
+
+
+class ExpenseCreate(BaseModel):
+    amount: int
+    payment_method: PaymentMethod
+    category_id: Optional[int] = None
+    date: date
+    memo: Optional[str] = None
+    is_recurring: bool = False
+
+
+class ExpenseUpdate(BaseModel):
+    amount: Optional[int] = None
+    payment_method: Optional[PaymentMethod] = None
+    category_id: Optional[int] = None
+    date: Optional[date] = None
+    memo: Optional[str] = None
+
+
+class ExpenseResponse(BaseModel):
+    id: int
+    user_id: int
+    amount: int
+    payment_method: PaymentMethod
+    category_id: Optional[int]
+    date: date
+    memo: Optional[str]
+    is_recurring: bool
+
+    model_config = {"from_attributes": True}
