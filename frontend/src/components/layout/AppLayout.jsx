@@ -29,7 +29,7 @@ export default function AppLayout() {
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header open={open} onToggle={() => setOpen((v) => !v)} theme={theme} onThemeToggle={toggle} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           <Outlet />
         </main>
       </div>

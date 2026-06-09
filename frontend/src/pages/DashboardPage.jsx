@@ -42,12 +42,12 @@ export default function DashboardPage() {
   const isOver = combinedTotal > budgetAmount
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">대시보드</h2>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{year}년 {month}월 현황</p>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">대시보드</h2>
+          <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 mt-0.5">{year}년 {month}월 현황</p>
         </div>
         {/* <Link
           to="/expense"
@@ -61,22 +61,22 @@ export default function DashboardPage() {
       {summaryLoading || recurringLoading ? (
         <Spinner />
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">이번달 총 지출 (월 지출 + 고정 지출)</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">{formatAmount(combinedTotal)}</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">이번달 총 지출 (월 지출 + 고정 지출)</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">{formatAmount(combinedTotal)}</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {/* 월 지출 */}
-            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4">
+            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 sm:p-4">
               <p className="text-xs text-blue-500 font-medium mb-1">월 지출</p>
-              <p className="text-xl font-bold text-blue-700">{formatAmount(monthlySpent)}</p>
+              <p className="text-base sm:text-xl font-bold text-blue-700">{formatAmount(monthlySpent)}</p>
               <p className="text-xs text-blue-400 mt-1">{summary?.count ?? 0}건</p>
             </div>
 
             {/* 고정 지출 */}
-            <div className="bg-purple-50 dark:bg-purple-900/30 rounded-xl p-4">
+            <div className="bg-purple-50 dark:bg-purple-900/30 rounded-xl p-3 sm:p-4">
               <p className="text-xs text-purple-500 font-medium mb-1">고정 지출</p>
-              <p className="text-xl font-bold text-purple-700">{formatAmount(monthlyRecurringTotal)}</p>
+              <p className="text-base sm:text-xl font-bold text-purple-700">{formatAmount(monthlyRecurringTotal)}</p>
               <p className="text-xs text-purple-400 mt-1">
                 {recurring.filter((r) => r.cycle === 'monthly').length}건 (매월)
               </p>
@@ -110,9 +110,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* 최근 월 지출 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">최근 월 지출</h3>
             <Link to="/expense" className="text-xs text-blue-500 hover:underline">전체 보기</Link>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 고정 지출 목록 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">고정 지출</h3>
             <Link to="/recur" className="text-xs text-blue-500 hover:underline">관리</Link>
