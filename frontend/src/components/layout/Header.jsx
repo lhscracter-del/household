@@ -66,7 +66,7 @@ export default function Header({ open, onToggle, theme, onThemeToggle }) {
         </span>
       </button>
 
-      <Button variant="ghost" size="sm" onClick={logout} className="flex-shrink-0 dark:text-gray-300 dark:hover:bg-gray-700">
+      <Button variant="ghost" size="sm" onClick={() => { if (confirm('로그아웃 하시겠습니까?')) logout() }} className="flex-shrink-0 dark:text-gray-300 dark:hover:bg-gray-700">
         로그아웃
       </Button>
     </header>
