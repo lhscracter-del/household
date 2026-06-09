@@ -4,6 +4,7 @@ import ExpenseList from '../components/expense/ExpenseList'
 import ExpenseFilter from '../components/expense/ExpenseFilter'
 import ExpenseForm from '../components/expense/ExpenseForm'
 import Modal from '../components/common/Modal'
+import ConfirmModal from '../components/common/ConfirmModal'
 import Button from '../components/common/Button'
 
 export default function ExpensePage() {
@@ -12,6 +13,7 @@ export default function ExpensePage() {
   const [order, setOrder] = useState('desc')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
 
   const { data: expenses, isLoading } = useExpenses({ ...filters, order })
   const { mutate: createExpense, isPending: isCreating } = useCreateExpense()
@@ -27,7 +29,8 @@ export default function ExpensePage() {
   }
 
   const handleEdit = (expense) => setEditTarget(expense)
-  const handleDelete = (id) => { if (confirm('이 항목을 삭제하시겠습니까? 삭제한 내역은 복구할 수 없어요.')) deleteExpense(id) }
+  const handleDelete = (id) => setDeleteTargetId(id)
+  const handleDeleteConfirm = () => { deleteExpense(deleteTargetId); setDeleteTargetId(null) }
 
   return (
     <div className="flex flex-col gap-4">
@@ -50,6 +53,13 @@ export default function ExpensePage() {
           isLoading={isUpdating}
         />
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!deleteTargetId}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTargetId(null)}
+        message="이 항목을 삭제하시겠습니까? 삭제한 내역은 복구할 수 없어요."
+      />
     </div>
   )
 }

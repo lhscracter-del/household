@@ -2,7 +2,7 @@ export const formatAmount = (amount) =>
   `${(amount ?? 0).toLocaleString('ko-KR')}원`
 
 export const formatDate = (dateStr) =>
-  dateStr.replace(/-/g, '.')
+  dateStr ? dateStr.replace(/-/g, '.') : ''
 
 export const formatDiff = (current, prev) => {
   if (!prev) return null

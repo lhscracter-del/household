@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { useLogout } from '../../hooks/useAuth'
 import Button from '../common/Button'
+import ConfirmModal from '../common/ConfirmModal'
 
 export default function Header({ open, onToggle, theme, onThemeToggle }) {
   const user = useAuthStore((s) => s.user)
   const logout = useLogout()
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false)
 
   return (
     <header className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4 gap-3 flex-shrink-0">
@@ -66,9 +69,18 @@ export default function Header({ open, onToggle, theme, onThemeToggle }) {
         </span>
       </button>
 
-      <Button variant="ghost" size="sm" onClick={() => { if (confirm('로그아웃 하시겠습니까?')) logout() }} className="flex-shrink-0 dark:text-gray-300 dark:hover:bg-gray-700">
+      <Button variant="ghost" size="sm" onClick={() => setIsLogoutOpen(true)} className="flex-shrink-0 dark:text-gray-300 dark:hover:bg-gray-700">
         로그아웃
       </Button>
+
+      <ConfirmModal
+        isOpen={isLogoutOpen}
+        onConfirm={() => { setIsLogoutOpen(false); logout() }}
+        onCancel={() => setIsLogoutOpen(false)}
+        message="로그아웃 하시겠습니까?"
+        confirmLabel="로그아웃"
+        confirmVariant="secondary"
+      />
     </header>
   )
 }

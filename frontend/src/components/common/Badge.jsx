@@ -8,7 +8,7 @@ const PAYMENT_TYPE_COLORS = {
 
 // paymentType: 대분류(cash/check_card/credit_card), name: 소분류 별칭
 export function PaymentBadge({ paymentType, name }) {
-  const colorCls = PAYMENT_TYPE_COLORS[paymentType] || 'bg-gray-100 text-gray-600'
+  const colorCls = PAYMENT_TYPE_COLORS[paymentType] || 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
   return (
     <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', colorCls)}>
       {name || paymentType}
@@ -19,8 +19,8 @@ export function PaymentBadge({ paymentType, name }) {
 export function CategoryBadge({ name, color, icon }) {
   return (
     <span
-      className="text-xs px-2 py-0.5 rounded-full font-medium"
-      style={{ backgroundColor: color ? `${color}20` : '#f3f4f6', color: color || '#374151' }}
+      className="text-xs px-2 py-0.5 rounded-full font-medium dark:text-gray-200"
+      style={{ backgroundColor: color ? `${color}30` : '#374151', color: color || undefined }}
     >
       {icon} {name}
     </span>

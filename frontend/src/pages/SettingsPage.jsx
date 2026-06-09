@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ConfirmModal from '../components/common/ConfirmModal'
 import { useCategories, useCreateCategory, useDeleteCategory } from '../hooks/useCategories'
 import {
   usePaymentMethods,
@@ -33,6 +34,7 @@ export default function SettingsPage() {
   const [isPmOpen, setIsPmOpen] = useState(false)
   const [selectedEmoji, setSelectedEmoji] = useState('📦')
   const [selectedColor, setSelectedColor] = useState('#607D8B')
+  const [confirmState, setConfirmState] = useState(null) // { message, onConfirm }
 
   const { data: categories = [], isLoading: catLoading } = useCategories()
   const { mutate: createCat, isPending: catPending } = useCreateCategory()
@@ -92,7 +94,7 @@ export default function SettingsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => { if (confirm(`'${pm.name}' 결제 수단을 삭제하시겠습니까?`)) removePm(pm.id) }}
+                            onClick={() => setConfirmState({ message: `'${pm.name}' 결제 수단을 삭제하시겠습니까?`, onConfirm: () => removePm(pm.id) })}
                             className="text-red-500 text-xs"
                           >
                             삭제
@@ -128,7 +130,7 @@ export default function SettingsPage() {
                 </div>
                 {c.user_id && (
                   <Button variant="ghost" size="sm"
-                    onClick={() => { if (confirm('삭제?')) removeCat(c.id) }}
+                    onClick={() => setConfirmState({ message: `'${c.icon} ${c.name}' 카테고리를 삭제하시겠습니까?`, onConfirm: () => removeCat(c.id) })}
                     className="text-red-500 text-xs">삭제</Button>
                 )}
               </div>
@@ -152,6 +154,13 @@ export default function SettingsPage() {
           <Button type="submit" disabled={pmPending}>{pmPending ? '저장 중...' : '저장'}</Button>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!confirmState}
+        onConfirm={() => { confirmState?.onConfirm(); setConfirmState(null) }}
+        onCancel={() => setConfirmState(null)}
+        message={confirmState?.message ?? ''}
+      />
 
       {/* ── 카테고리 추가 모달 ── */}
       <Modal isOpen={isCatOpen} onClose={() => setIsCatOpen(false)} title="카테고리 추가">

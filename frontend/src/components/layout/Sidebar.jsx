@@ -27,7 +27,7 @@ export default function Sidebar({ open, onClose }) {
     >
       {/* 로고 */}
       <div className={clsx(
-        'flex items-center h-14 flex-shrink-0 border-b border-gray-100 dark:border-gray-700',
+        'flex items-center h-14 flex-shrink-0 border-b border-gray-100 dark:border-gray-600',
         open ? 'px-6' : 'lg:justify-center px-6 lg:px-0',
       )}>
         <span className="text-xl flex-shrink-0">💼</span>

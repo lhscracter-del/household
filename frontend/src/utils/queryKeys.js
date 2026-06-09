@@ -4,5 +4,6 @@ export const QUERY_KEYS = {
   STATS: 'stats',
   BUDGETS: 'budgets',
   RECURRING: 'recurring',
+  PAYMENT_METHODS: 'payment-methods',
   USER: 'user',
 }

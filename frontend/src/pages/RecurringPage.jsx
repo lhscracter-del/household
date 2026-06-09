@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ConfirmModal from '../components/common/ConfirmModal'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getRecurring, createRecurring, updateRecurring, deleteRecurring } from '../api/recurring'
 import { QUERY_KEYS } from '../utils/queryKeys'
@@ -97,6 +98,7 @@ export default function RecurringPage() {
   const [editingItem, setEditingItem] = useState(null)
   const [selectedType, setSelectedType] = useState('')
   const [dueDay, setDueDay] = useState(0)
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
   const queryClient = useQueryClient()
   const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: categories = [] } = useCategories()
@@ -121,7 +123,7 @@ export default function RecurringPage() {
   })
 
   const { register, handleSubmit, setValue, watch, reset } = useForm({ defaultValues: { cycle: 'monthly' } })
-  const cycle = watch('cycle')
+  const cycle = watch('cycle', 'monthly')
   const isPending = isCreating || isUpdating
 
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
@@ -190,7 +192,7 @@ export default function RecurringPage() {
                 </div>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>수정</Button>
-                  <Button variant="ghost" size="sm" onClick={() => { if (confirm('이 항목을 삭제하시겠습니까?')) remove(item.id) }} className="text-red-500">삭제</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteTargetId(item.id)} className="text-red-500">삭제</Button>
                 </div>
               </div>
             )
@@ -233,7 +235,7 @@ export default function RecurringPage() {
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">주기</label>
-            <select className={selectCls} {...register('cycle', { required: true })} onChange={() => setDueDay(0)}>
+            <select className={selectCls} {...register('cycle', { required: true, onChange: () => setDueDay(0) })}>
               <option value="monthly">매월</option>
               <option value="weekly">매주</option>
             </select>
@@ -257,6 +259,13 @@ export default function RecurringPage() {
           <Button type="submit" disabled={isPending}>{isPending ? '저장 중...' : '저장하기'}</Button>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!deleteTargetId}
+        onConfirm={() => { remove(deleteTargetId); setDeleteTargetId(null) }}
+        onCancel={() => setDeleteTargetId(null)}
+        message="이 항목을 삭제하시겠습니까?"
+      />
     </div>
   )
 }

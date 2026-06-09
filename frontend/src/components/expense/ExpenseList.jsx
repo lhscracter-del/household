@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import ExpenseItem from './ExpenseItem'
 import EmptyState from '../common/EmptyState'
 import Spinner from '../common/Spinner'
@@ -5,7 +6,10 @@ import { usePaymentMethods } from '../../hooks/usePaymentMethods'
 
 export default function ExpenseList({ expenses, isLoading, onEdit, onDelete }) {
   const { data: paymentMethods = [] } = usePaymentMethods()
-  const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
+  const pmMap = useMemo(
+    () => Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm])),
+    [paymentMethods]
+  )
 
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500">

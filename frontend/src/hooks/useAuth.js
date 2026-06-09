@@ -10,7 +10,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
-      setAuth(data.access_token, data.refresh_token, null)
+      setAuth(data.access_token, data.refresh_token, data.user ?? null)
       navigate('/')
     },
   })
@@ -22,7 +22,7 @@ export function useRegister() {
   return useMutation({
     mutationFn: authApi.register,
     onSuccess: (data) => {
-      setAuth(data.access_token, data.refresh_token, null)
+      setAuth(data.access_token, data.refresh_token, data.user ?? null)
       navigate('/')
     },
   })

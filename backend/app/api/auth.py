@@ -35,17 +35,18 @@ DEFAULT_CATEGORIES = [
 
 router = APIRouter()
 
+# 모듈 레벨 단일 Redis 클라이언트 — 내부 커넥션 풀을 재사용하여
+# 요청마다 새 커넥션을 생성하는 오버헤드를 제거한다.
+redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
 
 async def get_redis():
-    client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-    try:
-        yield client
-    finally:
-        await client.aclose()
+    return redis_client
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy.exc import IntegrityError
     result = await db.execute(select(User).where(User.email == body.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="이미 사용 중인 이메일입니다.")
@@ -65,12 +66,18 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     for cat in DEFAULT_CATEGORIES:
         db.add(Category(user_id=user.id, created_at=now, updated_at=now, **cat))
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="이미 사용 중인 이메일입니다.")
+
     await db.refresh(user)
 
     access_token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    from app.schemas.auth import UserResponse
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, user=UserResponse.model_validate(user))
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -82,22 +89,25 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     access_token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    from app.schemas.auth import UserResponse
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token, user=UserResponse.model_validate(user))
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, redis=Depends(get_redis)):
+async def refresh(body: RefreshRequest, redis=Depends(get_redis), db: AsyncSession = Depends(get_db)):
     payload = verify_refresh_token(body.refresh_token)
     if not payload:
         raise HTTPException(status_code=401, detail="유효하지 않은 refresh token입니다.")
 
     user_id = payload.get("sub")
-    # Redis에서 무효화된 토큰 확인
     is_blacklisted = await redis.get(f"blacklist:{body.refresh_token}")
     if is_blacklisted:
         raise HTTPException(status_code=401, detail="만료된 refresh token입니다.")
 
-    # 기존 refresh token 블랙리스트 등록 (로테이션)
+    result = await db.execute(select(User).where(User.id == int(user_id)))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=401, detail="존재하지 않는 사용자입니다.")
+
     exp = payload.get("exp", 0)
     ttl = max(int(exp - time.time()), 1)
     await redis.setex(f"blacklist:{body.refresh_token}", ttl, "1")

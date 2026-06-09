@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useBudgets, useUpsertBudget, useDeleteBudget } from '../hooks/useBudgets'
 import { useSummary, useYearlyTotal } from '../hooks/useStats'
 import { useRecurring } from '../hooks/useRecurring'
@@ -100,7 +100,7 @@ function BudgetCard({ label, budget, spent, breakdown, onEdit, onDelete }) {
 }
 
 export default function BudgetPage() {
-  const now = new Date()
+  const now = useMemo(() => new Date(), [])
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
 

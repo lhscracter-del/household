@@ -32,9 +32,13 @@ async def get_expenses(
     if category_id:
         conditions.append(Expense.category_id == category_id)
 
-    order_by = Expense.date.asc() if order == "asc" else Expense.date.desc()
+    # 같은 날짜 내에서도 순서가 결정적이도록 id를 보조 정렬키로 추가
+    if order == "asc":
+        order_by = (Expense.date.asc(), Expense.id.asc())
+    else:
+        order_by = (Expense.date.desc(), Expense.id.desc())
     result = await db.execute(
-        select(Expense).where(and_(*conditions)).order_by(order_by)
+        select(Expense).where(and_(*conditions)).order_by(*order_by)
     )
     return result.scalars().all()
 

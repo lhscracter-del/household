@@ -1,9 +1,11 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatAmount } from '../../utils/format'
 import Spinner from '../common/Spinner'
+import EmptyState from '../common/EmptyState'
 
 export default function TrendChart({ data, isLoading }) {
   if (isLoading) return <Spinner />
+  if (!data?.length || data.every((d) => d.total === 0)) return <EmptyState message="이 기간의 지출 데이터가 없어요." />
 
   return (
     <ResponsiveContainer width="100%" height={200}>

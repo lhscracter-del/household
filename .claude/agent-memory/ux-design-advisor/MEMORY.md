@@ -1,0 +1,1 @@
+- [household 앱 UX 패턴 및 다크모드 규칙](project_household_ux.md) — 컴포넌트 구조, ConfirmModal 결정, 다크모드 색상 규칙

@@ -11,6 +11,7 @@ from app.core.deps import get_current_user
 from app.models.user import User
 from app.models.expense import Expense
 from app.models.category import Category
+from app.models.payment_method import PaymentMethod
 
 router = APIRouter()
 
@@ -29,22 +30,22 @@ async def export_csv(
         conditions.append(Expense.date <= end_date)
 
     result = await db.execute(
-        select(Expense, Category.name)
+        select(Expense, Category.name, PaymentMethod.name)
         .outerjoin(Category, Expense.category_id == Category.id)
+        .outerjoin(PaymentMethod, Expense.payment_method_id == PaymentMethod.id)
         .where(and_(*conditions))
-        .order_by(Expense.date.desc())
+        .order_by(Expense.date.desc(), Expense.id.desc())
     )
     rows = result.all()
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["날짜", "금액", "결제수단", "카테고리", "메모"])
-    for expense, category_name in rows:
-        payment_map = {"cash": "현금", "check_card": "체크카드", "credit_card": "신용카드"}
+    for expense, category_name, payment_name in rows:
         writer.writerow([
             expense.date.isoformat(),
             expense.amount,
-            payment_map.get(expense.payment_method.value, expense.payment_method.value),
+            payment_name or "미등록",
             category_name or "미분류",
             expense.memo or "",
         ])

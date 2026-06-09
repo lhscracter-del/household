@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useByCategory, useByPayment, useTrend } from '../hooks/useStats'
 import TrendChart from '../components/stats/TrendChart'
 import CategoryChart from '../components/stats/CategoryChart'
@@ -14,7 +14,7 @@ const TREND_TABS = [
 const selectCls = 'px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 
 export default function StatsPage() {
-  const now = new Date()
+  const now = useMemo(() => new Date(), [])
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [trendType, setTrendType] = useState('monthly')

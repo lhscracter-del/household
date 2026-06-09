@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useSummary } from '../hooks/useStats'
 import { useExpenses } from '../hooks/useExpenses'
@@ -13,13 +14,15 @@ import { clsx } from 'clsx'
 const CYCLE_LABELS = { monthly: '매월', weekly: '매주' }
 
 export default function DashboardPage() {
-  const now = new Date()
+  const now = useMemo(() => new Date(), [])
   const year = now.getFullYear()
   const month = now.getMonth() + 1
   const today = now.toISOString().slice(0, 10)
+  // 이번 달 1일 계산 — 전체 기간이 아닌 이번 달 지출만 조회하여 전송 데이터 양을 줄임
+  const startOfMonth = `${today.slice(0, 7)}-01`
 
   const { data: summary, isLoading: summaryLoading } = useSummary({ year, month })
-  const { data: recentExpenses = [], isLoading: expensesLoading } = useExpenses({ end_date: today })
+  const { data: recentExpenses = [], isLoading: expensesLoading } = useExpenses({ start_date: startOfMonth, end_date: today })
   const { data: budgets = [] } = useBudgets(year)
   const { data: recurring = [], isLoading: recurringLoading } = useRecurring()
   const { data: paymentMethods = [] } = usePaymentMethods()
@@ -47,7 +50,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">대시보드</h2>
-          <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 mt-0.5">{year}년 {month}월 현황</p>
+          <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-300 mt-0.5">{year}년 {month}월 현황</p>
         </div>
         {/* <Link
           to="/expense"
@@ -69,14 +72,14 @@ export default function DashboardPage() {
             {/* 월 지출 */}
             <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-3 sm:p-4">
               <p className="text-xs text-blue-500 font-medium mb-1">월 지출</p>
-              <p className="text-base sm:text-xl font-bold text-blue-700">{formatAmount(monthlySpent)}</p>
+              <p className="text-base sm:text-xl font-bold text-blue-700 dark:text-blue-300">{formatAmount(monthlySpent)}</p>
               <p className="text-xs text-blue-400 mt-1">{summary?.count ?? 0}건</p>
             </div>
 
             {/* 고정 지출 */}
             <div className="bg-purple-50 dark:bg-purple-900/30 rounded-xl p-3 sm:p-4">
               <p className="text-xs text-purple-500 font-medium mb-1">고정 지출</p>
-              <p className="text-base sm:text-xl font-bold text-purple-700">{formatAmount(monthlyRecurringTotal)}</p>
+              <p className="text-base sm:text-xl font-bold text-purple-700 dark:text-purple-300">{formatAmount(monthlyRecurringTotal)}</p>
               <p className="text-xs text-purple-400 mt-1">
                 {recurring.filter((r) => r.cycle === 'monthly').length}건 (매월)
               </p>
@@ -100,10 +103,10 @@ export default function DashboardPage() {
                   style={{ width: `${budgetRate}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-1 text-right">{budgetRate.toFixed(1)}% 사용</p>
+              <p className="text-xs text-gray-400 dark:text-gray-300 mt-1 text-right">{budgetRate.toFixed(1)}% 사용</p>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs text-gray-400 dark:text-gray-300 mt-4 pt-4 border-t border-gray-100 dark:border-gray-600">
               <Link to="/budget" className="text-blue-500 underline">예산을 설정</Link>하면 지출 현황을 한눈에 볼 수 있어요.
             </p>
           )}
@@ -126,8 +129,8 @@ export default function DashboardPage() {
                   <div className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatAmount(e.amount)}</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(e.date)}</span>
-                      {e.memo && <span className="text-xs text-gray-400">· {e.memo}</span>}
+                      <span className="text-xs text-gray-400 dark:text-gray-300">{formatDate(e.date)}</span>
+                      {e.memo && <span className="text-xs text-gray-400 dark:text-gray-300">· {e.memo}</span>}
                     </div>
                   </div>
                   {pmMap[e.payment_method_id] && (
@@ -156,16 +159,16 @@ export default function DashboardPage() {
                   <div className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{r.description}</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-400">{CYCLE_LABELS[r.cycle]}</span>
-                      <span className="text-xs text-gray-300">·</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-300">{CYCLE_LABELS[r.cycle]}</span>
+                      <span className="text-xs text-gray-300 dark:text-gray-500">·</span>
                       {pmMap[r.payment_method_id] && (
-                        <span className="text-xs text-gray-400">{pmMap[r.payment_method_id].name}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-300">{pmMap[r.payment_method_id].name}</span>
                       )}
                     </div>
                   </div>
                   <span className={clsx(
                     'text-sm font-semibold',
-                    r.cycle === 'monthly' ? 'text-purple-600' : 'text-gray-600'
+                    r.cycle === 'monthly' ? 'text-purple-600 dark:text-purple-300' : 'text-gray-600 dark:text-gray-300'
                   )}>
                     {formatAmount(r.amount)}
                   </span>
