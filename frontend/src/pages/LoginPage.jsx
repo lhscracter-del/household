@@ -19,7 +19,7 @@ export default function LoginPage() {
   const { mutate: login, isPending, error } = useLogin()
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center py-8 px-4">
+    <div className="min-h-dvh bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center py-8 px-4">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sm:p-8 w-full max-w-sm">
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-2xl font-bold text-blue-600">💼 가계부</h1>
