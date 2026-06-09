@@ -3,12 +3,18 @@ import ExpenseItem from './ExpenseItem'
 import EmptyState from '../common/EmptyState'
 import Spinner from '../common/Spinner'
 import { usePaymentMethods } from '../../hooks/usePaymentMethods'
+import { useCategories } from '../../hooks/useCategories'
 
 export default function ExpenseList({ expenses, isLoading, onEdit, onDelete }) {
   const { data: paymentMethods = [] } = usePaymentMethods()
+  const { data: categories = [] } = useCategories()
   const pmMap = useMemo(
     () => Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm])),
     [paymentMethods]
+  )
+  const catMap = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c])),
+    [categories]
   )
 
   if (isLoading) return (
@@ -26,6 +32,7 @@ export default function ExpenseList({ expenses, isLoading, onEdit, onDelete }) {
           key={expense.id}
           expense={expense}
           paymentMethodMap={pmMap}
+          categoryMap={catMap}
           onEdit={onEdit}
           onDelete={onDelete}
         />
