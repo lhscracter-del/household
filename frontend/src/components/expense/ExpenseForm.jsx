@@ -1,32 +1,40 @@
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import Input from '../common/Input'
 import Button from '../common/Button'
 import { useCategories } from '../../hooks/useCategories'
 import { usePaymentMethods } from '../../hooks/usePaymentMethods'
-import { PAYMENT_TYPE_LABELS } from '../../utils/constants'
+import { PAYMENT_TYPE_OPTIONS } from '../../utils/constants'
 
-const selectCls = 'px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
+const selectCls = 'flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 const labelCls = 'text-sm font-medium text-gray-700 dark:text-gray-200'
-
-// 대분류별로 결제수단 그룹핑
-function groupByType(paymentMethods) {
-  return paymentMethods.reduce((acc, pm) => {
-    const key = pm.payment_type
-    if (!acc[key]) acc[key] = []
-    acc[key].push(pm)
-    return acc
-  }, {})
-}
 
 export default function ExpenseForm({ onSubmit, defaultValues, isLoading }) {
   const { data: categories = [] } = useCategories()
   const { data: paymentMethods = [] } = usePaymentMethods()
+  const [selectedType, setSelectedType] = useState('')
   const today = new Date().toISOString().slice(0, 10)
-  const { register, handleSubmit, formState: { errors } } = useForm({
+
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
     defaultValues: { date: today, ...defaultValues },
   })
 
-  const grouped = groupByType(paymentMethods)
+  // 편집 시 초기 대분류 설정
+  useEffect(() => {
+    if (defaultValues?.payment_method_id && paymentMethods.length) {
+      const pm = paymentMethods.find((p) => p.id === defaultValues.payment_method_id)
+      if (pm) setSelectedType(pm.payment_type)
+    }
+  }, [defaultValues?.payment_method_id, paymentMethods])
+
+  const filteredMethods = selectedType
+    ? paymentMethods.filter((pm) => pm.payment_type === selectedType)
+    : []
+
+  const handleTypeChange = (e) => {
+    setSelectedType(e.target.value)
+    setValue('payment_method_id', '')
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -40,16 +48,24 @@ export default function ExpenseForm({ onSubmit, defaultValues, isLoading }) {
 
       <div className="flex flex-col gap-1">
         <label className={labelCls}>결제 수단</label>
-        <select className={selectCls} {...register('payment_method_id', { valueAsNumber: true })}>
-          <option value="">선택 안함</option>
-          {Object.entries(grouped).map(([type, methods]) => (
-            <optgroup key={type} label={PAYMENT_TYPE_LABELS[type] || type}>
-              {methods.map((pm) => (
-                <option key={pm.id} value={pm.id}>{pm.name}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <select className={selectCls} value={selectedType} onChange={handleTypeChange}>
+            <option value="">대분류</option>
+            {PAYMENT_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <select
+            className={selectCls}
+            disabled={!selectedType}
+            {...register('payment_method_id', { valueAsNumber: true })}
+          >
+            <option value="">소분류</option>
+            {filteredMethods.map((pm) => (
+              <option key={pm.id} value={pm.id}>{pm.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1">

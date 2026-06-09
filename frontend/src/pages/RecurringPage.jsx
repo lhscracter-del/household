@@ -12,20 +12,13 @@ import Input from '../components/common/Input'
 import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
 import { useForm } from 'react-hook-form'
-import { PAYMENT_TYPE_LABELS } from '../utils/constants'
+import { PAYMENT_TYPE_OPTIONS } from '../utils/constants'
 
-const selectCls = 'px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
-
-function groupByType(paymentMethods) {
-  return paymentMethods.reduce((acc, pm) => {
-    if (!acc[pm.payment_type]) acc[pm.payment_type] = []
-    acc[pm.payment_type].push(pm)
-    return acc
-  }, {})
-}
+const selectCls = 'flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 
 export default function RecurringPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [selectedType, setSelectedType] = useState('')
   const queryClient = useQueryClient()
   const { data: categories = [] } = useCategories()
   const { data: paymentMethods = [] } = usePaymentMethods()
@@ -38,11 +31,21 @@ export default function RecurringPage() {
     mutationFn: deleteRecurring,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] }),
   })
-  const { register, handleSubmit } = useForm()
+  const { register, handleSubmit, setValue } = useForm()
 
   const CYCLE_LABELS = { monthly: '매월', weekly: '매주' }
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
-  const grouped = groupByType(paymentMethods)
+  const filteredMethods = selectedType ? paymentMethods.filter((pm) => pm.payment_type === selectedType) : []
+
+  const handleTypeChange = (e) => {
+    setSelectedType(e.target.value)
+    setValue('payment_method_id', '')
+  }
+
+  const handleClose = () => {
+    setIsFormOpen(false)
+    setSelectedType('')
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -71,22 +74,26 @@ export default function RecurringPage() {
         </div>
       ) : <EmptyState message="등록된 반복 지출이 없어요. 월세, 구독료 같은 고정 지출을 등록하면 자동으로 집계돼요. 🔄" />}
 
-      <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title="반복 지출 추가">
+      <Modal isOpen={isFormOpen} onClose={handleClose} title="반복 지출 추가">
         <form onSubmit={handleSubmit(create)} className="flex flex-col gap-4">
           <Input label="설명" {...register('description', { required: true })} />
           <Input label="금액" type="number" {...register('amount', { required: true, valueAsNumber: true })} />
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">결제 수단</label>
-            <select className={selectCls} {...register('payment_method_id', { valueAsNumber: true })}>
-              <option value="">선택 안함</option>
-              {Object.entries(grouped).map(([type, methods]) => (
-                <optgroup key={type} label={PAYMENT_TYPE_LABELS[type] || type}>
-                  {methods.map((pm) => (
-                    <option key={pm.id} value={pm.id}>{pm.name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select className={selectCls} value={selectedType} onChange={handleTypeChange}>
+                <option value="">대분류</option>
+                {PAYMENT_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <select className={selectCls} disabled={!selectedType} {...register('payment_method_id', { valueAsNumber: true })}>
+                <option value="">소분류</option>
+                {filteredMethods.map((pm) => (
+                  <option key={pm.id} value={pm.id}>{pm.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">주기</label>
