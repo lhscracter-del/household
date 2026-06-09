@@ -7,7 +7,7 @@ import { clsx } from 'clsx'
 
 const selectCls = 'px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 
-function BudgetCard({ label, budget, spent, breakdown, onEdit, onDelete }) {
+function BudgetCard({ label, budget, spent, breakdown, breakdownLabels = { monthly: '월 지출', recurring: '고정 지출' }, onEdit, onDelete }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState('')
 
@@ -60,11 +60,11 @@ function BudgetCard({ label, budget, spent, breakdown, onEdit, onDelete }) {
           {breakdown && (
             <div className="flex gap-3 pt-3 border-t border-gray-100 dark:border-gray-700">
               <div className="flex-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
-                <p className="text-xs text-blue-500 dark:text-blue-400 font-medium mb-1">월 지출</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 font-medium mb-1">{breakdownLabels.monthly}</p>
                 <p className="text-base font-bold text-blue-700 dark:text-blue-300">{formatAmount(breakdown.monthly)}</p>
               </div>
               <div className="flex-1 bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3">
-                <p className="text-xs text-purple-500 dark:text-purple-400 font-medium mb-1">고정 지출</p>
+                <p className="text-xs text-purple-500 dark:text-purple-400 font-medium mb-1">{breakdownLabels.recurring}</p>
                 <p className="text-base font-bold text-purple-700 dark:text-purple-300">{formatAmount(breakdown.recurring)}</p>
               </div>
             </div>
@@ -152,6 +152,7 @@ export default function BudgetPage() {
         budget={yearlyBudget?.amount ?? 0}
         spent={yearlySpent}
         breakdown={{ monthly: yearlyTotal?.total ?? 0, recurring: recurringMonthly * 12 }}
+        breakdownLabels={{ monthly: '연 지출', recurring: '고정 지출(연)' }}
         onEdit={(amount) => upsert({ budget_type: 'yearly', amount, year })}
         onDelete={yearlyBudget ? () => remove(yearlyBudget.id) : undefined}
       />
