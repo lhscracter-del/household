@@ -5,9 +5,15 @@ from app.api import auth, expenses, categories, stats, budgets, recurring, expor
 
 app = FastAPI(title="가계부 API", version="1.0.0")
 
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://household-rhdc.onrender.com",
+    *settings.ALLOWED_ORIGINS,
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=list(set(ALLOWED_ORIGINS)),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
