@@ -116,7 +116,7 @@ export default function RecurringPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">반복 지출</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">반복 지출</h2>
         <Button onClick={() => setIsFormOpen(true)}>+ 추가</Button>
       </div>
 

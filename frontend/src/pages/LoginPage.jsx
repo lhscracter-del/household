@@ -20,8 +20,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 w-full max-w-sm">
-        <div className="text-center mb-8">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 sm:p-8 w-full max-w-sm mx-4 sm:mx-0">
+        <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-2xl font-bold text-blue-600">💼 가계부</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">로그인하여 시작하세요</p>
         </div>

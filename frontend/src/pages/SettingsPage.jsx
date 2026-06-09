@@ -63,11 +63,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-lg">
-      <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">설정</h2>
+    <div className="flex flex-col gap-4 sm:gap-6 max-w-lg">
+      <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">설정</h2>
 
       {/* ── 결제 수단 관리 ── */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-700 dark:text-gray-200">결제 수단 관리</h3>
           <Button size="sm" onClick={() => setIsPmOpen(true)}>+ 추가</Button>
@@ -109,7 +109,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ── 카테고리 관리 ── */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-700 dark:text-gray-200">카테고리 관리</h3>
           <Button size="sm" onClick={() => setIsCatOpen(true)}>+ 추가</Button>

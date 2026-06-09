@@ -30,9 +30,9 @@ export default function StatsPage() {
   const totalByCategory = categoryData?.reduce((s, c) => s + c.total, 0) ?? 0
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">통계</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">통계</h2>
         <div className="flex gap-2">
           <select className={selectCls} value={year} onChange={(e) => setYear(Number(e.target.value))}>
             {Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i).map((y) => <option key={y} value={y}>{y}년</option>)}
@@ -46,7 +46,7 @@ export default function StatsPage() {
       </div>
 
       {/* 소비 트렌드 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">소비 트렌드</h3>
           <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
@@ -74,7 +74,7 @@ export default function StatsPage() {
       </div>
 
       {/* 카테고리 & 결제수단 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <CategoryChart data={categoryData} isLoading={isCategoryLoading} />
         <PaymentChart data={paymentData} isLoading={isPaymentLoading} />
       </div>
@@ -87,19 +87,19 @@ export default function StatsPage() {
 
       {/* 카테고리별 상세 테이블 */}
       {categoryData?.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">카테고리별 상세</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 sm:mb-4">카테고리별 상세</h3>
           <div className="flex flex-col gap-2">
             {categoryData.map((item) => {
               const ratio = totalByCategory ? (item.total / totalByCategory * 100).toFixed(1) : 0
               return (
-                <div key={item.category_id ?? 'none'} className="flex items-center gap-3">
-                  <span className="text-sm w-20 text-gray-600 dark:text-gray-300 truncate">{item.category_name}</span>
+                <div key={item.category_id ?? 'none'} className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-xs sm:text-sm w-16 sm:w-20 text-gray-600 dark:text-gray-300 truncate">{item.category_name}</span>
                   <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div className="h-full bg-blue-400 rounded-full" style={{ width: `${ratio}%` }} />
                   </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 w-10 text-right">{ratio}%</span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 w-24 text-right">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 w-8 sm:w-10 text-right">{ratio}%</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 w-20 sm:w-24 text-right">
                     {formatAmount(item.total)}
                   </span>
                 </div>

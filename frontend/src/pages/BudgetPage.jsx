@@ -24,8 +24,8 @@ function BudgetCard({ label, budget, spent, breakdown, onEdit, onDelete }) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
         <h3 className="font-semibold text-gray-800 dark:text-gray-100">{label}</h3>
         <div className="flex gap-2">
           {budget > 0 && (
@@ -41,7 +41,7 @@ function BudgetCard({ label, budget, spent, breakdown, onEdit, onDelete }) {
         <>
           <div className="flex justify-between items-end mb-2">
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{formatAmount(spent)}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{formatAmount(spent)}</p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">예산 {formatAmount(budget)}</p>
             </div>
             <p className={clsx('text-sm font-medium', isOver ? 'text-red-500' : 'text-blue-500')}>
@@ -123,9 +123,9 @@ export default function BudgetPage() {
   const yearlySpent = (yearlyTotal?.total ?? 0) + recurringMonthly * 12
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
+    <div className="flex flex-col gap-4 sm:gap-6 max-w-2xl">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">예산 관리</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">예산 관리</h2>
         <div className="flex gap-2">
           <select className={selectCls} value={year} onChange={(e) => setYear(Number(e.target.value))}>
             {Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i).map((y) => <option key={y} value={y}>{y}년</option>)}

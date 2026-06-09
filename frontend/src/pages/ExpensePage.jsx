@@ -29,9 +29,9 @@ export default function ExpensePage() {
   const handleDelete = (id) => { if (confirm('이 항목을 삭제하시겠습니까? 삭제한 내역은 복구할 수 없어요.')) deleteExpense(id) }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-bold text-gray-800">지출 관리</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">지출 관리</h2>
         <Button onClick={() => setIsFormOpen(true)}>+ 지출 추가</Button>
       </div>
 
