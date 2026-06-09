@@ -22,7 +22,7 @@ services:
       - key: APP_ENV
         value: production
       - key: ALLOWED_ORIGINS
-        sync: false        # 프론트엔드 URL 확정 후 입력
+        value: '["http://localhost:5173","https://household-rhdc.onrender.com"]'
 
   # ── 프론트엔드 (React Static Site) ───────────────────────────
   - type: web
