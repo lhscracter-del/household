@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getRecurring, createRecurring, deleteRecurring } from '../api/recurring'
 import { QUERY_KEYS } from '../utils/queryKeys'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
+import { useCategories } from '../hooks/useCategories'
 import { formatAmount } from '../utils/format'
 import { PaymentBadge } from '../components/common/Badge'
 import Button from '../components/common/Button'
@@ -87,6 +88,7 @@ export default function RecurringPage() {
   const [dueDay, setDueDay] = useState(0)
   const queryClient = useQueryClient()
   const { data: paymentMethods = [] } = usePaymentMethods()
+  const { data: categories = [] } = useCategories()
   const { data: items = [], isLoading } = useQuery({ queryKey: [QUERY_KEYS.RECURRING], queryFn: getRecurring })
   const { mutate: create, isPending } = useMutation({
     mutationFn: createRecurring,
@@ -168,6 +170,16 @@ export default function RecurringPage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">카테고리</label>
+            <select className={selectCls} {...register('category_id', { valueAsNumber: true })}>
+              <option value="">미분류</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex flex-col gap-1">

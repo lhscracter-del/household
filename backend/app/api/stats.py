@@ -4,10 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, extract
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from collections import defaultdict
 from app.models.user import User
 from app.models.expense import Expense
 from app.models.category import Category
 from app.models.payment_method import PaymentMethod
+from app.models.recurring import RecurringExpense
 from app.schemas.stats import SummaryResponse, CategoryStat, PaymentStat, TrendPoint
 
 router = APIRouter()
@@ -58,13 +60,8 @@ async def get_by_category(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(
-            Expense.category_id,
-            Category.name,
-            func.sum(Expense.amount),
-            func.count(Expense.id),
-        )
+    expense_result = await db.execute(
+        select(Expense.category_id, Category.name, func.sum(Expense.amount), func.count(Expense.id))
         .outerjoin(Category, Expense.category_id == Category.id)
         .where(and_(
             Expense.user_id == current_user.id,
@@ -72,12 +69,32 @@ async def get_by_category(
             extract("month", Expense.date) == month,
         ))
         .group_by(Expense.category_id, Category.name)
-        .order_by(func.sum(Expense.amount).desc())
     )
-    return [
-        CategoryStat(category_id=row[0], category_name=row[1] or "미분류", total=row[2] or 0, count=row[3] or 0)
-        for row in result.all()
-    ]
+    recurring_result = await db.execute(
+        select(RecurringExpense.category_id, Category.name, func.sum(RecurringExpense.amount), func.count(RecurringExpense.id))
+        .outerjoin(Category, RecurringExpense.category_id == Category.id)
+        .where(and_(
+            RecurringExpense.user_id == current_user.id,
+            RecurringExpense.cycle == "monthly",
+        ))
+        .group_by(RecurringExpense.category_id, Category.name)
+    )
+
+    totals: dict = defaultdict(lambda: {"name": "미분류", "total": 0, "count": 0})
+    for row in expense_result.all():
+        totals[row[0]]["name"] = row[1] or "미분류"
+        totals[row[0]]["total"] += row[2] or 0
+        totals[row[0]]["count"] += row[3] or 0
+    for row in recurring_result.all():
+        totals[row[0]]["name"] = row[1] or "미분류"
+        totals[row[0]]["total"] += row[2] or 0
+        totals[row[0]]["count"] += row[3] or 0
+
+    return sorted(
+        [CategoryStat(category_id=k, category_name=v["name"], total=v["total"], count=v["count"])
+         for k, v in totals.items()],
+        key=lambda x: -x.total,
+    )
 
 
 @router.get("/by-payment", response_model=List[PaymentStat])
@@ -87,13 +104,10 @@ async def get_by_payment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
+    expense_result = await db.execute(
         select(
-            Expense.payment_method_id,
-            PaymentMethod.name,
-            PaymentMethod.payment_type,
-            func.sum(Expense.amount),
-            func.count(Expense.id),
+            Expense.payment_method_id, PaymentMethod.name, PaymentMethod.payment_type,
+            func.sum(Expense.amount), func.count(Expense.id),
         )
         .outerjoin(PaymentMethod, Expense.payment_method_id == PaymentMethod.id)
         .where(and_(
@@ -102,18 +116,38 @@ async def get_by_payment(
             extract("month", Expense.date) == month,
         ))
         .group_by(Expense.payment_method_id, PaymentMethod.name, PaymentMethod.payment_type)
-        .order_by(func.sum(Expense.amount).desc())
     )
-    return [
-        PaymentStat(
-            payment_method_id=row[0],
-            payment_method_name=row[1] or "미분류",
-            payment_type=row[2] or "cash",
-            total=row[3] or 0,
-            count=row[4] or 0,
+    recurring_result = await db.execute(
+        select(
+            RecurringExpense.payment_method_id, PaymentMethod.name, PaymentMethod.payment_type,
+            func.sum(RecurringExpense.amount), func.count(RecurringExpense.id),
         )
-        for row in result.all()
-    ]
+        .outerjoin(PaymentMethod, RecurringExpense.payment_method_id == PaymentMethod.id)
+        .where(and_(
+            RecurringExpense.user_id == current_user.id,
+            RecurringExpense.cycle == "monthly",
+        ))
+        .group_by(RecurringExpense.payment_method_id, PaymentMethod.name, PaymentMethod.payment_type)
+    )
+
+    totals: dict = defaultdict(lambda: {"name": "미분류", "type": "cash", "total": 0, "count": 0})
+    for row in expense_result.all():
+        totals[row[0]]["name"] = row[1] or "미분류"
+        totals[row[0]]["type"] = row[2] or "cash"
+        totals[row[0]]["total"] += row[3] or 0
+        totals[row[0]]["count"] += row[4] or 0
+    for row in recurring_result.all():
+        totals[row[0]]["name"] = row[1] or "미분류"
+        totals[row[0]]["type"] = row[2] or "cash"
+        totals[row[0]]["total"] += row[3] or 0
+        totals[row[0]]["count"] += row[4] or 0
+
+    return sorted(
+        [PaymentStat(payment_method_id=k, payment_method_name=v["name"], payment_type=v["type"],
+                     total=v["total"], count=v["count"])
+         for k, v in totals.items()],
+        key=lambda x: -x.total,
+    )
 
 
 @router.get("/yearly-total", response_model=SummaryResponse)
