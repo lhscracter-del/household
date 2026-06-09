@@ -5,6 +5,7 @@ import { clsx } from 'clsx'
 const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 
 const RANGES = [
+  { label: '오늘', days: 0 },
   { label: '1주', days: 7 },
   { label: '1개월', months: 1 },
   { label: '3개월', months: 3 },
