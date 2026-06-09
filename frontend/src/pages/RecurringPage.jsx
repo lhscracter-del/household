@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ConfirmModal from '../components/common/ConfirmModal'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getRecurring, createRecurring, updateRecurring, deleteRecurring } from '../api/recurring'
@@ -96,7 +96,7 @@ function extractDueDay(item) {
 export default function RecurringPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
-  const [selectedType, setSelectedType] = useState('')
+  const [selectedType, setSelectedType] = useState(PAYMENT_TYPE_OPTIONS[0].value)
   const [dueDay, setDueDay] = useState(0)
   const [deleteTargetId, setDeleteTargetId] = useState(null)
   const queryClient = useQueryClient()
@@ -127,7 +127,16 @@ export default function RecurringPage() {
   const isPending = isCreating || isUpdating
 
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
-  const filteredMethods = selectedType ? paymentMethods.filter((pm) => pm.payment_type === selectedType) : []
+  const filteredMethods = paymentMethods.filter((pm) => pm.payment_type === selectedType)
+
+  // 신규 폼 열릴 때 기본값 설정
+  useEffect(() => {
+    if (!isFormOpen || editingItem || !paymentMethods.length || !categories.length) return
+    const defaultPm = paymentMethods.find((pm) => pm.payment_type === PAYMENT_TYPE_OPTIONS[0].value)
+    const defaultCat = categories.find((c) => c.name === '기타')
+    if (defaultPm) setValue('payment_method_id', defaultPm.id)
+    if (defaultCat) setValue('category_id', defaultCat.id)
+  }, [isFormOpen, editingItem, paymentMethods, categories])
 
   const handleTypeChange = (e) => {
     const type = e.target.value
@@ -139,15 +148,21 @@ export default function RecurringPage() {
   const handleClose = () => {
     setIsFormOpen(false)
     setEditingItem(null)
-    setSelectedType('')
+    setSelectedType(PAYMENT_TYPE_OPTIONS[0].value)
     setDueDay(0)
-    reset({ cycle: 'monthly' })
+    const defaultPm = paymentMethods.find((pm) => pm.payment_type === PAYMENT_TYPE_OPTIONS[0].value)
+    const defaultCat = categories.find((c) => c.name === '기타')
+    reset({
+      cycle: 'monthly',
+      payment_method_id: defaultPm?.id ?? '',
+      category_id: defaultCat?.id ?? '',
+    })
   }
 
   const handleEdit = (item) => {
     setEditingItem(item)
     const pm = paymentMethods.find((p) => p.id === item.payment_method_id)
-    setSelectedType(pm?.payment_type ?? '')
+    setSelectedType(pm?.payment_type ?? PAYMENT_TYPE_OPTIONS[0].value)
     setDueDay(extractDueDay(item))
     reset({
       description: item.description,
@@ -209,13 +224,11 @@ export default function RecurringPage() {
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">결제 수단</label>
             <div className="flex gap-2">
               <select className={selectCls} value={selectedType} onChange={handleTypeChange}>
-                <option value="">대분류</option>
                 {PAYMENT_TYPE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-              <select className={selectCls} disabled={!selectedType} {...register('payment_method_id', { valueAsNumber: true })}>
-                <option value="">소분류</option>
+              <select className={selectCls} {...register('payment_method_id', { valueAsNumber: true })}>
                 {filteredMethods.map((pm) => (
                   <option key={pm.id} value={pm.id}>{pm.name}</option>
                 ))}
@@ -226,7 +239,6 @@ export default function RecurringPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">카테고리</label>
             <select className={selectCls} {...register('category_id', { valueAsNumber: true })}>
-              <option value="">미분류</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
               ))}
