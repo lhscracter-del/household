@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getRecurring, createRecurring, deleteRecurring } from '../api/recurring'
 import { QUERY_KEYS } from '../utils/queryKeys'
-import { useCategories } from '../hooks/useCategories'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { formatAmount } from '../utils/format'
 import { PaymentBadge } from '../components/common/Badge'
@@ -16,24 +15,84 @@ import { PAYMENT_TYPE_OPTIONS } from '../utils/constants'
 
 const selectCls = 'flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 
+const DAY_OPTIONS = [
+  { value: 0, label: '미설정' },
+  ...Array.from({ length: 31 }, (_, i) => ({ value: i + 1, label: `${i + 1}일` })),
+]
+
+const WEEKDAY_OPTIONS = [
+  { value: 0, label: '미설정' },
+  { value: 1, label: '월요일' },
+  { value: 2, label: '화요일' },
+  { value: 3, label: '수요일' },
+  { value: 4, label: '목요일' },
+  { value: 5, label: '금요일' },
+  { value: 6, label: '토요일' },
+  { value: 7, label: '일요일' },
+]
+
+function calcNextDueDate(day, cycle) {
+  const today = new Date()
+  if (!day) return today.toISOString().slice(0, 10)
+
+  if (cycle === 'monthly') {
+    const y = today.getFullYear()
+    const m = today.getMonth()
+    const lastDay = new Date(y, m + 1, 0).getDate()
+    const d = Math.min(day, lastDay)
+    const candidate = new Date(y, m, d)
+    if (candidate >= today) return candidate.toISOString().slice(0, 10)
+    const nm = m + 1 > 11 ? 0 : m + 1
+    const ny = m + 1 > 11 ? y + 1 : y
+    const lastDay2 = new Date(ny, nm + 1, 0).getDate()
+    return new Date(ny, nm, Math.min(day, lastDay2)).toISOString().slice(0, 10)
+  }
+
+  if (cycle === 'weekly') {
+    // value 1=월 ... 6=토 7=일 → JS getDay: 0=일,1=월...6=토
+    const jsDay = day === 7 ? 0 : day
+    const cur = today.getDay()
+    let diff = jsDay - cur
+    if (diff <= 0) diff += 7
+    const next = new Date(today)
+    next.setDate(today.getDate() + diff)
+    return next.toISOString().slice(0, 10)
+  }
+
+  return today.toISOString().slice(0, 10)
+}
+
+function formatDueLabel(item) {
+  if (item.cycle === 'monthly') {
+    const d = new Date(item.next_due_date).getUTCDate()
+    return `매월 ${d}일`
+  }
+  if (item.cycle === 'weekly') {
+    const DAYS = ['일', '월', '화', '수', '목', '금', '토']
+    const d = new Date(item.next_due_date).getUTCDay()
+    return `매주 ${DAYS[d]}요일`
+  }
+  return item.next_due_date
+}
+
 export default function RecurringPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedType, setSelectedType] = useState('')
+  const [dueDay, setDueDay] = useState(0)
   const queryClient = useQueryClient()
-  const { data: categories = [] } = useCategories()
   const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: items = [], isLoading } = useQuery({ queryKey: [QUERY_KEYS.RECURRING], queryFn: getRecurring })
   const { mutate: create, isPending } = useMutation({
     mutationFn: createRecurring,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] }); setIsFormOpen(false) },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] }); handleClose() },
   })
   const { mutate: remove } = useMutation({
     mutationFn: deleteRecurring,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] }),
   })
-  const { register, handleSubmit, setValue } = useForm()
+  const { register, handleSubmit, setValue, watch } = useForm({ defaultValues: { cycle: 'monthly' } })
+  const cycle = watch('cycle')
 
-  const CYCLE_LABELS = { monthly: '매월', weekly: '매주' }
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
   const filteredMethods = selectedType ? paymentMethods.filter((pm) => pm.payment_type === selectedType) : []
 
@@ -45,7 +104,14 @@ export default function RecurringPage() {
   const handleClose = () => {
     setIsFormOpen(false)
     setSelectedType('')
+    setDueDay(0)
   }
+
+  const handleCreate = (data) => {
+    create({ ...data, next_due_date: calcNextDueDate(dueDay, data.cycle) })
+  }
+
+  const dayOptions = cycle === 'weekly' ? WEEKDAY_OPTIONS : DAY_OPTIONS
 
   return (
     <div className="flex flex-col gap-5">
@@ -64,10 +130,10 @@ export default function RecurringPage() {
                   <p className="font-medium text-gray-900 dark:text-gray-100">{item.description} — {formatAmount(item.amount)}</p>
                   <div className="flex gap-2 mt-1">
                     {pm && <PaymentBadge paymentType={pm.payment_type} name={pm.name} />}
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{CYCLE_LABELS[item.cycle]} · 다음: {item.next_due_date}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatDueLabel(item)}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { if (confirm('이 항목을 삭제하시겠습니까? 삭제한 내역은 복구할 수 없어요.')) remove(item.id) }} className="text-red-500">삭제</Button>
+                <Button variant="ghost" size="sm" onClick={() => { if (confirm('이 항목을 삭제하시겠습니까?')) remove(item.id) }} className="text-red-500">삭제</Button>
               </div>
             )
           })}
@@ -75,9 +141,10 @@ export default function RecurringPage() {
       ) : <EmptyState message="등록된 반복 지출이 없어요. 월세, 구독료 같은 고정 지출을 등록하면 자동으로 집계돼요. 🔄" />}
 
       <Modal isOpen={isFormOpen} onClose={handleClose} title="반복 지출 추가">
-        <form onSubmit={handleSubmit(create)} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(handleCreate)} className="flex flex-col gap-4">
           <Input label="설명" {...register('description', { required: true })} />
           <Input label="금액" type="number" {...register('amount', { required: true, valueAsNumber: true })} />
+
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">결제 수단</label>
             <div className="flex gap-2">
@@ -95,14 +162,30 @@ export default function RecurringPage() {
               </select>
             </div>
           </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">주기</label>
-            <select className={selectCls} {...register('cycle', { required: true })}>
+            <select className={selectCls} {...register('cycle', { required: true })} onChange={() => setDueDay(0)}>
               <option value="monthly">매월</option>
               <option value="weekly">매주</option>
             </select>
           </div>
-          <Input label="다음 결제일" type="date" {...register('next_due_date', { required: true })} />
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+              {cycle === 'weekly' ? '결제 요일' : '결제일'}
+            </label>
+            <select
+              className={selectCls}
+              value={dueDay}
+              onChange={(e) => setDueDay(Number(e.target.value))}
+            >
+              {dayOptions.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
           <Button type="submit" disabled={isPending}>{isPending ? '저장 중...' : '저장하기'}</Button>
         </form>
       </Modal>
