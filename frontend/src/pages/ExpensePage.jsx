@@ -9,10 +9,11 @@ import Button from '../components/common/Button'
 export default function ExpensePage() {
   const today = new Date().toISOString().slice(0, 10)
   const [filters, setFilters] = useState({ start_date: today, end_date: today })
+  const [order, setOrder] = useState('desc')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
 
-  const { data: expenses, isLoading } = useExpenses(filters)
+  const { data: expenses, isLoading } = useExpenses({ ...filters, order })
   const { mutate: createExpense, isPending: isCreating } = useCreateExpense()
   const { mutate: updateExpense, isPending: isUpdating } = useUpdateExpense()
   const { mutate: deleteExpense } = useDeleteExpense()
@@ -35,7 +36,7 @@ export default function ExpensePage() {
         <Button onClick={() => setIsFormOpen(true)}>+ 지출 추가</Button>
       </div>
 
-      <ExpenseFilter filters={filters} onChange={setFilters} />
+      <ExpenseFilter filters={filters} order={order} onChange={setFilters} onOrderChange={setOrder} />
       <ExpenseList expenses={expenses} isLoading={isLoading} onEdit={handleEdit} onDelete={handleDelete} />
 
       <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title="지출 추가">

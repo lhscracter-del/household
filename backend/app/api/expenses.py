@@ -18,6 +18,7 @@ async def get_expenses(
     end_date: Optional[date] = Query(None),
     payment_method_id: Optional[int] = Query(None),
     category_id: Optional[int] = Query(None),
+    order: str = Query("desc"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -31,8 +32,9 @@ async def get_expenses(
     if category_id:
         conditions.append(Expense.category_id == category_id)
 
+    order_by = Expense.date.asc() if order == "asc" else Expense.date.desc()
     result = await db.execute(
-        select(Expense).where(and_(*conditions)).order_by(Expense.date.desc())
+        select(Expense).where(and_(*conditions)).order_by(order_by)
     )
     return result.scalars().all()
 
