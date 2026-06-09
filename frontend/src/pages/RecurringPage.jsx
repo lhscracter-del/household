@@ -92,11 +92,18 @@ export default function RecurringPage() {
   const { data: items = [], isLoading } = useQuery({ queryKey: [QUERY_KEYS.RECURRING], queryFn: getRecurring })
   const { mutate: create, isPending } = useMutation({
     mutationFn: createRecurring,
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] }); handleClose() },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.STATS] })
+      handleClose()
+    },
   })
   const { mutate: remove } = useMutation({
     mutationFn: deleteRecurring,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] })
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.STATS] })
+    },
   })
   const { register, handleSubmit, setValue, watch, reset } = useForm({ defaultValues: { cycle: 'monthly' } })
   const cycle = watch('cycle')
