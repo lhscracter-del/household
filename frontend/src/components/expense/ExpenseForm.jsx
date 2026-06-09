@@ -32,8 +32,10 @@ export default function ExpenseForm({ onSubmit, defaultValues, isLoading }) {
     : []
 
   const handleTypeChange = (e) => {
-    setSelectedType(e.target.value)
-    setValue('payment_method_id', '')
+    const type = e.target.value
+    setSelectedType(type)
+    const first = paymentMethods.find((pm) => pm.payment_type === type)
+    setValue('payment_method_id', first ? first.id : '')
   }
 
   return (

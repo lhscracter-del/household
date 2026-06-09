@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getRecurring, createRecurring, deleteRecurring } from '../api/recurring'
+import { getRecurring, createRecurring, updateRecurring, deleteRecurring } from '../api/recurring'
 import { QUERY_KEYS } from '../utils/queryKeys'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { useCategories } from '../hooks/useCategories'
@@ -82,49 +82,88 @@ function formatDueLabel(item) {
   return item.next_due_date
 }
 
+function extractDueDay(item) {
+  const date = new Date(item.next_due_date)
+  if (item.cycle === 'monthly') return date.getUTCDate()
+  if (item.cycle === 'weekly') {
+    const jsDay = date.getUTCDay()
+    return jsDay === 0 ? 7 : jsDay
+  }
+  return 0
+}
+
 export default function RecurringPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
   const [selectedType, setSelectedType] = useState('')
   const [dueDay, setDueDay] = useState(0)
   const queryClient = useQueryClient()
   const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: categories = [] } = useCategories()
   const { data: items = [], isLoading } = useQuery({ queryKey: [QUERY_KEYS.RECURRING], queryFn: getRecurring })
-  const { mutate: create, isPending } = useMutation({
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] })
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.STATS] })
+  }
+
+  const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: createRecurring,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] })
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.STATS] })
-      handleClose()
-    },
+    onSuccess: () => { invalidate(); handleClose() },
+  })
+  const { mutate: update, isPending: isUpdating } = useMutation({
+    mutationFn: ({ id, data }) => updateRecurring(id, data),
+    onSuccess: () => { invalidate(); handleClose() },
   })
   const { mutate: remove } = useMutation({
     mutationFn: deleteRecurring,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] })
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.STATS] })
-    },
+    onSuccess: invalidate,
   })
+
   const { register, handleSubmit, setValue, watch, reset } = useForm({ defaultValues: { cycle: 'monthly' } })
   const cycle = watch('cycle')
+  const isPending = isCreating || isUpdating
 
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
   const filteredMethods = selectedType ? paymentMethods.filter((pm) => pm.payment_type === selectedType) : []
 
   const handleTypeChange = (e) => {
-    setSelectedType(e.target.value)
-    setValue('payment_method_id', '')
+    const type = e.target.value
+    setSelectedType(type)
+    const first = paymentMethods.find((pm) => pm.payment_type === type)
+    setValue('payment_method_id', first ? first.id : '')
   }
 
   const handleClose = () => {
     setIsFormOpen(false)
+    setEditingItem(null)
     setSelectedType('')
     setDueDay(0)
     reset({ cycle: 'monthly' })
   }
 
-  const handleCreate = (data) => {
-    create({ ...data, next_due_date: calcNextDueDate(dueDay, data.cycle) })
+  const handleEdit = (item) => {
+    setEditingItem(item)
+    const pm = paymentMethods.find((p) => p.id === item.payment_method_id)
+    setSelectedType(pm?.payment_type ?? '')
+    setDueDay(extractDueDay(item))
+    reset({
+      description: item.description,
+      amount: item.amount,
+      payment_method_id: item.payment_method_id ?? '',
+      category_id: item.category_id ?? '',
+      cycle: item.cycle,
+    })
+    setIsFormOpen(true)
+  }
+
+  const handleSave = (data) => {
+    const next_due_date = calcNextDueDate(dueDay, data.cycle)
+    if (editingItem) {
+      update({ id: editingItem.id, data: { ...data, next_due_date } })
+    } else {
+      create({ ...data, next_due_date })
+    }
   }
 
   const dayOptions = cycle === 'weekly' ? WEEKDAY_OPTIONS : DAY_OPTIONS
@@ -149,15 +188,18 @@ export default function RecurringPage() {
                     <span className="text-xs text-gray-500 dark:text-gray-400">{formatDueLabel(item)}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { if (confirm('이 항목을 삭제하시겠습니까?')) remove(item.id) }} className="text-red-500">삭제</Button>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>수정</Button>
+                  <Button variant="ghost" size="sm" onClick={() => { if (confirm('이 항목을 삭제하시겠습니까?')) remove(item.id) }} className="text-red-500">삭제</Button>
+                </div>
               </div>
             )
           })}
         </div>
       ) : <EmptyState message="등록된 반복 지출이 없어요. 월세, 구독료 같은 고정 지출을 등록하면 자동으로 집계돼요. 🔄" />}
 
-      <Modal isOpen={isFormOpen} onClose={handleClose} title="반복 지출 추가">
-        <form onSubmit={handleSubmit(handleCreate)} className="flex flex-col gap-4">
+      <Modal isOpen={isFormOpen} onClose={handleClose} title={editingItem ? '반복 지출 수정' : '반복 지출 추가'}>
+        <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
           <Input label="설명" {...register('description', { required: true })} />
           <Input label="금액" type="number" {...register('amount', { required: true, valueAsNumber: true })} />
 

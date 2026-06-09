@@ -80,8 +80,22 @@ export default function ExpenseFilter({ filters, order, onChange, onOrderChange 
         </div>
       </div>
 
-      {/* 날짜 직접 입력 + 결제수단 */}
+      {/* 결제수단 + 날짜 직접 입력 */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <select
+          className="w-full sm:w-auto px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100"
+          value={filters.payment_method_id || ''}
+          onChange={(e) => onChange({ ...filters, payment_method_id: e.target.value || undefined })}
+        >
+          <option value="">전체 결제수단</option>
+          {Object.entries(grouped).map(([type, methods]) => (
+            <optgroup key={type} label={PAYMENT_TYPE_LABELS[type] || type}>
+              {methods.map((pm) => (
+                <option key={pm.id} value={pm.id}>{pm.name}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <input
             type="date"
@@ -97,20 +111,6 @@ export default function ExpenseFilter({ filters, order, onChange, onOrderChange 
             onChange={(e) => onChange({ ...filters, end_date: e.target.value || undefined })}
           />
         </div>
-        <select
-          className="w-full sm:w-auto px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100"
-          value={filters.payment_method_id || ''}
-          onChange={(e) => onChange({ ...filters, payment_method_id: e.target.value || undefined })}
-        >
-          <option value="">전체 결제수단</option>
-          {Object.entries(grouped).map(([type, methods]) => (
-            <optgroup key={type} label={PAYMENT_TYPE_LABELS[type] || type}>
-              {methods.map((pm) => (
-                <option key={pm.id} value={pm.id}>{pm.name}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
       </div>
     </div>
   )

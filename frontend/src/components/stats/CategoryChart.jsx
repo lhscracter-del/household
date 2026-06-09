@@ -10,8 +10,8 @@ export default function CategoryChart({ data, isLoading }) {
   if (!data?.length) return <EmptyState message="카테고리 데이터가 없습니다." />
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h3 className="text-sm font-semibold text-gray-700 mb-4">카테고리별 지출</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">카테고리별 지출</h3>
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
           <Pie data={data} dataKey="total" nameKey="category_name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
