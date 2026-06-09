@@ -32,10 +32,10 @@ export default function App() {
           }
         >
           <Route index element={<DashboardPage />} />
-          <Route path="expenses" element={<ExpensePage />} />
-          <Route path="stats" element={<StatsPage />} />
+          <Route path="expense" element={<ExpensePage />} />
+          <Route path="report" element={<StatsPage />} />
           <Route path="budget" element={<BudgetPage />} />
-          <Route path="recurring" element={<RecurringPage />} />
+          <Route path="recur" element={<RecurringPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

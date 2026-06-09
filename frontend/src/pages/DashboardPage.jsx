@@ -50,7 +50,7 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{year}년 {month}월 현황</p>
         </div>
         {/* <Link
-          to="/expenses"
+          to="/expense"
           className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
         >
           + 지출 추가
@@ -115,7 +115,7 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">최근 월 지출</h3>
-            <Link to="/expenses" className="text-xs text-blue-500 hover:underline">전체 보기</Link>
+            <Link to="/expense" className="text-xs text-blue-500 hover:underline">전체 보기</Link>
           </div>
           {expensesLoading ? (
             <Spinner size="sm" />
@@ -145,7 +145,7 @@ export default function DashboardPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">고정 지출</h3>
-            <Link to="/recurring" className="text-xs text-blue-500 hover:underline">관리</Link>
+            <Link to="/recur" className="text-xs text-blue-500 hover:underline">관리</Link>
           </div>
           {recurringLoading ? (
             <Spinner size="sm" />

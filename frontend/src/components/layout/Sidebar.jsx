@@ -3,10 +3,10 @@ import { clsx } from 'clsx'
 
 const navItems = [
   { to: '/', label: '대시보드', icon: '🏠', end: true },
-  { to: '/expenses', label: '지출 관리', icon: '💰' },
-  { to: '/stats', label: '통계', icon: '📊' },
+  { to: '/expense', label: '지출 관리', icon: '💰' },
+  { to: '/report', label: '통계', icon: '📊' },
   { to: '/budget', label: '예산', icon: '🎯' },
-  { to: '/recurring', label: '반복 지출', icon: '🔄' },
+  { to: '/recur', label: '반복 지출', icon: '🔄' },
   { to: '/settings', label: '설정', icon: '⚙️' },
 ]
 
