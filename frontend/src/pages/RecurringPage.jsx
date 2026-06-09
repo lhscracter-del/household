@@ -8,7 +8,6 @@ import { useCategories } from '../hooks/useCategories'
 import { formatAmount } from '../utils/format'
 import { PaymentBadge } from '../components/common/Badge'
 import Button from '../components/common/Button'
-import Modal from '../components/common/Modal'
 import Input from '../components/common/Input'
 import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
@@ -94,8 +93,8 @@ function extractDueDay(item) {
 }
 
 export default function RecurringPage() {
-  const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
+  const [formOpen, setFormOpen] = useState(false)
   const [selectedType, setSelectedType] = useState(PAYMENT_TYPE_OPTIONS[0].value)
   const [dueDay, setDueDay] = useState(0)
   const [deleteTargetId, setDeleteTargetId] = useState(null)
@@ -111,11 +110,11 @@ export default function RecurringPage() {
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: createRecurring,
-    onSuccess: () => { invalidate(); handleClose() },
+    onSuccess: () => { invalidate(); handleReset(true) },
   })
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, data }) => updateRecurring(id, data),
-    onSuccess: () => { invalidate(); handleClose() },
+    onSuccess: () => { invalidate(); handleReset(false) },
   })
   const { mutate: remove } = useMutation({
     mutationFn: deleteRecurring,
@@ -127,16 +126,17 @@ export default function RecurringPage() {
   const isPending = isCreating || isUpdating
 
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
+  const catMap = Object.fromEntries(categories.map((c) => [c.id, c]))
   const filteredMethods = paymentMethods.filter((pm) => pm.payment_type === selectedType)
 
-  // 신규 폼 열릴 때 기본값 설정
+  // 신규 모드일 때 기본값 자동 설정
   useEffect(() => {
-    if (!isFormOpen || editingItem || !paymentMethods.length || !categories.length) return
+    if (editingItem || !paymentMethods.length || !categories.length) return
     const defaultPm = paymentMethods.find((pm) => pm.payment_type === PAYMENT_TYPE_OPTIONS[0].value)
     const defaultCat = categories.find((c) => c.name === '기타')
     if (defaultPm) setValue('payment_method_id', defaultPm.id)
     if (defaultCat) setValue('category_id', defaultCat.id)
-  }, [isFormOpen, editingItem, paymentMethods, categories])
+  }, [editingItem, paymentMethods, categories])
 
   const handleTypeChange = (e) => {
     const type = e.target.value
@@ -145,14 +145,16 @@ export default function RecurringPage() {
     setValue('payment_method_id', first ? first.id : '')
   }
 
-  const handleClose = () => {
-    setIsFormOpen(false)
+  const handleReset = (keepOpen = false) => {
     setEditingItem(null)
+    if (!keepOpen) setFormOpen(false)
     setSelectedType(PAYMENT_TYPE_OPTIONS[0].value)
     setDueDay(0)
     const defaultPm = paymentMethods.find((pm) => pm.payment_type === PAYMENT_TYPE_OPTIONS[0].value)
     const defaultCat = categories.find((c) => c.name === '기타')
     reset({
+      description: '',
+      amount: '',
       cycle: 'monthly',
       payment_method_id: defaultPm?.id ?? '',
       category_id: defaultCat?.id ?? '',
@@ -171,7 +173,8 @@ export default function RecurringPage() {
       category_id: item.category_id ?? '',
       cycle: item.cycle,
     })
-    setIsFormOpen(true)
+    setFormOpen(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleSave = (data) => {
@@ -187,38 +190,35 @@ export default function RecurringPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">반복 지출</h2>
-        <Button onClick={() => setIsFormOpen(true)}>+ 추가</Button>
-      </div>
+      <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">반복 지출</h2>
 
-      {isLoading ? <Spinner /> : items.length ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          {items.map((item) => {
-            const pm = pmMap[item.payment_method_id]
-            return (
-              <div key={item.id} className="flex items-center justify-between py-3 px-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{item.description} — {formatAmount(item.amount)}</p>
-                  <div className="flex gap-2 mt-1">
-                    {pm && <PaymentBadge paymentType={pm.payment_type} name={pm.name} />}
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatDueLabel(item)}</span>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>수정</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setDeleteTargetId(item.id)} className="text-red-500">삭제</Button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : <EmptyState message="등록된 반복 지출이 없어요. 월세, 구독료 같은 고정 지출을 등록하면 자동으로 집계돼요. 🔄" />}
+      {/* 인라인 입력 폼 */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => { if (!editingItem) setFormOpen((v) => !v) }}
+          className="w-full flex items-center justify-between px-4 sm:px-5 py-4 text-left"
+        >
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            {editingItem ? `수정 중: ${editingItem.description}` : '새 항목 등록'}
+          </h3>
+          {!editingItem && (
+            <svg
+              className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${formOpen ? 'rotate-180' : ''}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </button>
 
-      <Modal isOpen={isFormOpen} onClose={handleClose} title={editingItem ? '반복 지출 수정' : '반복 지출 추가'}>
-        <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-4">
-          <Input label="설명" {...register('description', { required: true })} />
-          <Input label="금액" type="number" {...register('amount', { required: true, valueAsNumber: true })} />
+        {(formOpen || editingItem) && (
+        <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-gray-100 dark:border-gray-700 pt-4">
+        <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input label="설명" {...register('description', { required: true })} />
+            <Input label="금액" type="number" {...register('amount', { required: true, valueAsNumber: true })} />
+          </div>
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">결제 수단</label>
@@ -236,41 +236,78 @@ export default function RecurringPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">카테고리</label>
-            <select className={selectCls} {...register('category_id', { valueAsNumber: true })}>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">카테고리</label>
+              <select className={selectCls} {...register('category_id', { valueAsNumber: true })}>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">주기</label>
+              <select className={selectCls} {...register('cycle', { required: true, onChange: () => setDueDay(0) })}>
+                <option value="monthly">매월</option>
+                <option value="weekly">매주</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                {cycle === 'weekly' ? '결제 요일' : '결제일'}
+              </label>
+              <select className={selectCls} value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))}>
+                {dayOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">주기</label>
-            <select className={selectCls} {...register('cycle', { required: true, onChange: () => setDueDay(0) })}>
-              <option value="monthly">매월</option>
-              <option value="weekly">매주</option>
-            </select>
+          <div className="flex justify-end gap-2 pt-1">
+            {editingItem && (
+              <Button type="button" variant="secondary" onClick={handleReset}>취소</Button>
+            )}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? '저장 중...' : editingItem ? '수정 저장' : '등록'}
+            </Button>
           </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-              {cycle === 'weekly' ? '결제 요일' : '결제일'}
-            </label>
-            <select
-              className={selectCls}
-              value={dueDay}
-              onChange={(e) => setDueDay(Number(e.target.value))}
-            >
-              {dayOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <Button type="submit" disabled={isPending}>{isPending ? '저장 중...' : '저장하기'}</Button>
         </form>
-      </Modal>
+        </div>
+        )}
+      </div>
+
+      {/* 등록된 항목 목록 */}
+      {isLoading ? <Spinner /> : items.length ? (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          {items.map((item) => {
+            const pm = pmMap[item.payment_method_id]
+            const cat = catMap[item.category_id]
+            const isEditing = editingItem?.id === item.id
+            return (
+              <div
+                key={item.id}
+                className={`flex items-center justify-between py-3 px-4 border-b border-gray-100 dark:border-gray-700 last:border-0 transition-colors ${isEditing ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{item.description} — {formatAmount(item.amount)}</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {cat && <span className="text-xs text-gray-500 dark:text-gray-400">{cat.icon} {cat.name}</span>}
+                    {pm && <PaymentBadge paymentType={pm.payment_type} name={pm.name} />}
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatDueLabel(item)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} disabled={isEditing}>수정</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteTargetId(item.id)} className="text-red-500">삭제</Button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : <EmptyState message="등록된 반복 지출이 없어요. 월세, 구독료 같은 고정 지출을 등록하면 자동으로 집계돼요." />}
 
       <ConfirmModal
         isOpen={!!deleteTargetId}

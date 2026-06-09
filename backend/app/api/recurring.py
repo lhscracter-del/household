@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, nullslast
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
@@ -17,7 +17,9 @@ async def get_recurring(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(RecurringExpense).where(RecurringExpense.user_id == current_user.id)
+        select(RecurringExpense)
+        .where(RecurringExpense.user_id == current_user.id)
+        .order_by(nullslast(RecurringExpense.category_id.asc()), RecurringExpense.next_due_date.asc())
     )
     return result.scalars().all()
 

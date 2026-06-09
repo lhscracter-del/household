@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
 
 
@@ -23,7 +24,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    user: "UserResponse | None" = None
+    user: Optional["UserResponse"] = None
 
 
 class RefreshRequest(BaseModel):
