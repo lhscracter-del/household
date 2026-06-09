@@ -1,8 +1,20 @@
-import { PAYMENT_METHODS } from '../../utils/constants'
+import { usePaymentMethods } from '../../hooks/usePaymentMethods'
+import { PAYMENT_TYPE_LABELS } from '../../utils/constants'
 
 const inputCls = 'px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 
+function groupByType(paymentMethods) {
+  return paymentMethods.reduce((acc, pm) => {
+    if (!acc[pm.payment_type]) acc[pm.payment_type] = []
+    acc[pm.payment_type].push(pm)
+    return acc
+  }, {})
+}
+
 export default function ExpenseFilter({ filters, onChange }) {
+  const { data: paymentMethods = [] } = usePaymentMethods()
+  const grouped = groupByType(paymentMethods)
+
   return (
     <div className="flex flex-wrap gap-3 items-center">
       <input
@@ -20,11 +32,16 @@ export default function ExpenseFilter({ filters, onChange }) {
       />
       <select
         className={inputCls}
-        value={filters.payment_method || 'all'}
-        onChange={(e) => onChange({ ...filters, payment_method: e.target.value === 'all' ? undefined : e.target.value })}
+        value={filters.payment_method_id || ''}
+        onChange={(e) => onChange({ ...filters, payment_method_id: e.target.value || undefined })}
       >
-        {PAYMENT_METHODS.map((m) => (
-          <option key={m.value} value={m.value}>{m.label}</option>
+        <option value="">전체 결제수단</option>
+        {Object.entries(grouped).map(([type, methods]) => (
+          <optgroup key={type} label={PAYMENT_TYPE_LABELS[type] || type}>
+            {methods.map((pm) => (
+              <option key={pm.id} value={pm.id}>{pm.name}</option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </div>

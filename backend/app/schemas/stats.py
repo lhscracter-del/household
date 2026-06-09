@@ -17,7 +17,9 @@ class CategoryStat(BaseModel):
 
 
 class PaymentStat(BaseModel):
-    payment_method: str
+    payment_method_id: Optional[int]
+    payment_method_name: str
+    payment_type: str
     total: int
     count: int
 

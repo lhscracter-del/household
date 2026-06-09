@@ -11,7 +11,14 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.models.category import Category
+from app.models.payment_method import PaymentMethod
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, UserResponse
+
+DEFAULT_PAYMENT_METHODS = [
+    {"payment_type": "cash",        "name": "현금",    "is_default": True},
+    {"payment_type": "check_card",  "name": "체크카드", "is_default": False},
+    {"payment_type": "credit_card", "name": "신용카드", "is_default": False},
+]
 
 DEFAULT_CATEGORIES = [
     {"name": "식비",     "icon": "🍽️", "color": "#FF9800"},
@@ -53,6 +60,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
     from datetime import datetime
     now = datetime.utcnow()
+    for pm in DEFAULT_PAYMENT_METHODS:
+        db.add(PaymentMethod(user_id=user.id, created_at=now, updated_at=now, **pm))
     for cat in DEFAULT_CATEGORIES:
         db.add(Category(user_id=user.id, created_at=now, updated_at=now, **cat))
 

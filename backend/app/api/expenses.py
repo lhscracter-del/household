@@ -6,7 +6,7 @@ from sqlalchemy import select, and_
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
-from app.models.expense import Expense, PaymentMethod
+from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse
 
 router = APIRouter()
@@ -16,7 +16,7 @@ router = APIRouter()
 async def get_expenses(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-    payment_method: Optional[PaymentMethod] = Query(None),
+    payment_method_id: Optional[int] = Query(None),
     category_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -26,8 +26,8 @@ async def get_expenses(
         conditions.append(Expense.date >= start_date)
     if end_date:
         conditions.append(Expense.date <= end_date)
-    if payment_method:
-        conditions.append(Expense.payment_method == payment_method)
+    if payment_method_id:
+        conditions.append(Expense.payment_method_id == payment_method_id)
     if category_id:
         conditions.append(Expense.category_id == category_id)
 

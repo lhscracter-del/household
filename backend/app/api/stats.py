@@ -5,8 +5,9 @@ from sqlalchemy import select, func, and_, extract
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
-from app.models.expense import Expense, PaymentMethod
+from app.models.expense import Expense
 from app.models.category import Category
+from app.models.payment_method import PaymentMethod
 from app.schemas.stats import SummaryResponse, CategoryStat, PaymentStat, TrendPoint
 
 router = APIRouter()
@@ -16,7 +17,7 @@ router = APIRouter()
 async def get_summary(
     year: int = Query(...),
     month: int = Query(...),
-    payment_method: Optional[str] = Query(None),
+    payment_method_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -25,8 +26,8 @@ async def get_summary(
         extract("year", Expense.date) == year,
         extract("month", Expense.date) == month,
     ]
-    if payment_method and payment_method != "all":
-        conditions.append(Expense.payment_method == payment_method)
+    if payment_method_id:
+        conditions.append(Expense.payment_method_id == payment_method_id)
 
     result = await db.execute(
         select(func.sum(Expense.amount), func.count(Expense.id)).where(and_(*conditions))
@@ -35,16 +36,14 @@ async def get_summary(
     total = row[0] or 0
     count = row[1] or 0
 
-    # 전월 비교
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
-    prev_cond = [
-        Expense.user_id == current_user.id,
-        extract("year", Expense.date) == prev_year,
-        extract("month", Expense.date) == prev_month,
-    ]
     prev_result = await db.execute(
-        select(func.sum(Expense.amount)).where(and_(*prev_cond))
+        select(func.sum(Expense.amount)).where(and_(
+            Expense.user_id == current_user.id,
+            extract("year", Expense.date) == prev_year,
+            extract("month", Expense.date) == prev_month,
+        ))
     )
     prev_total = prev_result.scalar() or 0
     diff_rate = round((total - prev_total) / prev_total * 100, 1) if prev_total else None
@@ -67,23 +66,16 @@ async def get_by_category(
             func.count(Expense.id),
         )
         .outerjoin(Category, Expense.category_id == Category.id)
-        .where(
-            and_(
-                Expense.user_id == current_user.id,
-                extract("year", Expense.date) == year,
-                extract("month", Expense.date) == month,
-            )
-        )
+        .where(and_(
+            Expense.user_id == current_user.id,
+            extract("year", Expense.date) == year,
+            extract("month", Expense.date) == month,
+        ))
         .group_by(Expense.category_id, Category.name)
         .order_by(func.sum(Expense.amount).desc())
     )
     return [
-        CategoryStat(
-            category_id=row[0],
-            category_name=row[1] or "미분류",
-            total=row[2] or 0,
-            count=row[3] or 0,
-        )
+        CategoryStat(category_id=row[0], category_name=row[1] or "미분류", total=row[2] or 0, count=row[3] or 0)
         for row in result.all()
     ]
 
@@ -97,21 +89,29 @@ async def get_by_payment(
 ):
     result = await db.execute(
         select(
-            Expense.payment_method,
+            Expense.payment_method_id,
+            PaymentMethod.name,
+            PaymentMethod.payment_type,
             func.sum(Expense.amount),
             func.count(Expense.id),
         )
-        .where(
-            and_(
-                Expense.user_id == current_user.id,
-                extract("year", Expense.date) == year,
-                extract("month", Expense.date) == month,
-            )
-        )
-        .group_by(Expense.payment_method)
+        .outerjoin(PaymentMethod, Expense.payment_method_id == PaymentMethod.id)
+        .where(and_(
+            Expense.user_id == current_user.id,
+            extract("year", Expense.date) == year,
+            extract("month", Expense.date) == month,
+        ))
+        .group_by(Expense.payment_method_id, PaymentMethod.name, PaymentMethod.payment_type)
+        .order_by(func.sum(Expense.amount).desc())
     )
     return [
-        PaymentStat(payment_method=row[0].value, total=row[1] or 0, count=row[2] or 0)
+        PaymentStat(
+            payment_method_id=row[0],
+            payment_method_name=row[1] or "미분류",
+            payment_type=row[2] or "cash",
+            total=row[3] or 0,
+            count=row[4] or 0,
+        )
         for row in result.all()
     ]
 
@@ -141,16 +141,8 @@ async def get_trend(
 ):
     if type == "monthly":
         result = await db.execute(
-            select(
-                extract("month", Expense.date).label("m"),
-                func.sum(Expense.amount),
-            )
-            .where(
-                and_(
-                    Expense.user_id == current_user.id,
-                    extract("year", Expense.date) == year,
-                )
-            )
+            select(extract("month", Expense.date).label("m"), func.sum(Expense.amount))
+            .where(and_(Expense.user_id == current_user.id, extract("year", Expense.date) == year))
             .group_by(extract("month", Expense.date))
             .order_by(extract("month", Expense.date))
         )
@@ -160,17 +152,12 @@ async def get_trend(
     if type == "weekly" and month:
         week_expr = func.floor((extract("day", Expense.date) - 1) / 7 + 1)
         result = await db.execute(
-            select(
-                week_expr.label("w"),
-                func.sum(Expense.amount),
-            )
-            .where(
-                and_(
-                    Expense.user_id == current_user.id,
-                    extract("year", Expense.date) == year,
-                    extract("month", Expense.date) == month,
-                )
-            )
+            select(week_expr.label("w"), func.sum(Expense.amount))
+            .where(and_(
+                Expense.user_id == current_user.id,
+                extract("year", Expense.date) == year,
+                extract("month", Expense.date) == month,
+            ))
             .group_by(week_expr)
             .order_by(week_expr)
         )

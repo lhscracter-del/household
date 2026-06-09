@@ -2,7 +2,6 @@ import enum
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Enum
 from app.core.database import Base
-from app.models.expense import PaymentMethod
 
 
 class RecurrenceCycle(str, enum.Enum):
@@ -16,7 +15,7 @@ class RecurringExpense(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     amount = Column(Integer, nullable=False)
-    payment_method = Column(Enum(PaymentMethod), nullable=False)
+    payment_method_id = Column(Integer, ForeignKey("payment_methods.id"), nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     description = Column(String(255), nullable=False)
     cycle = Column(Enum(RecurrenceCycle), nullable=False)

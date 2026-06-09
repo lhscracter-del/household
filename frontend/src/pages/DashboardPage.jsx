@@ -7,9 +7,9 @@ import { PaymentBadge } from '../components/common/Badge'
 import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
 import { formatAmount, formatDate } from '../utils/format'
+import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { clsx } from 'clsx'
 
-const PAYMENT_LABELS = { cash: '현금', check_card: '체크카드', credit_card: '신용카드' }
 const CYCLE_LABELS = { monthly: '매월', weekly: '매주' }
 
 export default function DashboardPage() {
@@ -22,6 +22,8 @@ export default function DashboardPage() {
   const { data: recentExpenses = [], isLoading: expensesLoading } = useExpenses({ end_date: today })
   const { data: budgets = [] } = useBudgets(year)
   const { data: recurring = [], isLoading: recurringLoading } = useRecurring()
+  const { data: paymentMethods = [] } = usePaymentMethods()
+  const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
 
   const recentFive = recentExpenses.slice(0, 5)
   const monthlyBudget = budgets.find((b) => b.budget_type === 'monthly' && b.month === month)
@@ -128,7 +130,9 @@ export default function DashboardPage() {
                       {e.memo && <span className="text-xs text-gray-400">· {e.memo}</span>}
                     </div>
                   </div>
-                  <PaymentBadge method={e.payment_method} />
+                  {pmMap[e.payment_method_id] && (
+                    <PaymentBadge paymentType={pmMap[e.payment_method_id].payment_type} name={pmMap[e.payment_method_id].name} />
+                  )}
                 </div>
               ))}
             </div>
@@ -154,7 +158,9 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-gray-400">{CYCLE_LABELS[r.cycle]}</span>
                       <span className="text-xs text-gray-300">·</span>
-                      <span className="text-xs text-gray-400">{PAYMENT_LABELS[r.payment_method]}</span>
+                      {pmMap[r.payment_method_id] && (
+                        <span className="text-xs text-gray-400">{pmMap[r.payment_method_id].name}</span>
+                      )}
                     </div>
                   </div>
                   <span className={clsx(

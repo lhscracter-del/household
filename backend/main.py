@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import auth, expenses, categories, stats, budgets, recurring, export
+from app.api import auth, expenses, categories, stats, budgets, recurring, export, payment_methods
 
 app = FastAPI(title="가계부 API", version="1.0.0")
 
@@ -20,3 +20,4 @@ app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(budgets.router, prefix="/api/budgets", tags=["budgets"])
 app.include_router(recurring.router, prefix="/api/recurring", tags=["recurring"])
 app.include_router(export.router, prefix="/api/export", tags=["export"])
+app.include_router(payment_methods.router, prefix="/api/payment-methods", tags=["payment-methods"])

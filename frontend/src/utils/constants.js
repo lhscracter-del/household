@@ -1,5 +1,11 @@
-export const PAYMENT_METHODS = [
-  { value: 'all', label: '전체' },
+// 대분류 타입 레이블 (UI 표시용)
+export const PAYMENT_TYPE_LABELS = {
+  cash: '현금',
+  check_card: '체크카드',
+  credit_card: '신용카드',
+}
+
+export const PAYMENT_TYPE_OPTIONS = [
   { value: 'cash', label: '현금' },
   { value: 'check_card', label: '체크카드' },
   { value: 'credit_card', label: '신용카드' },

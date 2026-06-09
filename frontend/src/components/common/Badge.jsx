@@ -1,21 +1,17 @@
 import { clsx } from 'clsx'
 
-const PAYMENT_COLORS = {
-  cash: 'bg-green-100 text-green-700',
-  check_card: 'bg-blue-100 text-blue-700',
-  credit_card: 'bg-purple-100 text-purple-700',
+const PAYMENT_TYPE_COLORS = {
+  cash: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  check_card: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  credit_card: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
 }
 
-const PAYMENT_LABELS = {
-  cash: '현금',
-  check_card: '체크카드',
-  credit_card: '신용카드',
-}
-
-export function PaymentBadge({ method }) {
+// paymentType: 대분류(cash/check_card/credit_card), name: 소분류 별칭
+export function PaymentBadge({ paymentType, name }) {
+  const colorCls = PAYMENT_TYPE_COLORS[paymentType] || 'bg-gray-100 text-gray-600'
   return (
-    <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', PAYMENT_COLORS[method])}>
-      {PAYMENT_LABELS[method] || method}
+    <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', colorCls)}>
+      {name || paymentType}
     </span>
   )
 }
