@@ -31,9 +31,16 @@ const WEEKDAY_OPTIONS = [
   { value: 7, label: '일요일' },
 ]
 
+function localDateStr(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 function calcNextDueDate(day, cycle) {
   const today = new Date()
-  if (!day) return today.toISOString().slice(0, 10)
+  if (!day) return localDateStr(today)
 
   if (cycle === 'monthly') {
     const y = today.getFullYear()
@@ -41,25 +48,24 @@ function calcNextDueDate(day, cycle) {
     const lastDay = new Date(y, m + 1, 0).getDate()
     const d = Math.min(day, lastDay)
     const candidate = new Date(y, m, d)
-    if (candidate >= today) return candidate.toISOString().slice(0, 10)
+    if (candidate >= today) return localDateStr(candidate)
     const nm = m + 1 > 11 ? 0 : m + 1
     const ny = m + 1 > 11 ? y + 1 : y
     const lastDay2 = new Date(ny, nm + 1, 0).getDate()
-    return new Date(ny, nm, Math.min(day, lastDay2)).toISOString().slice(0, 10)
+    return localDateStr(new Date(ny, nm, Math.min(day, lastDay2)))
   }
 
   if (cycle === 'weekly') {
-    // value 1=월 ... 6=토 7=일 → JS getDay: 0=일,1=월...6=토
     const jsDay = day === 7 ? 0 : day
     const cur = today.getDay()
     let diff = jsDay - cur
     if (diff <= 0) diff += 7
     const next = new Date(today)
     next.setDate(today.getDate() + diff)
-    return next.toISOString().slice(0, 10)
+    return localDateStr(next)
   }
 
-  return today.toISOString().slice(0, 10)
+  return localDateStr(today)
 }
 
 function formatDueLabel(item) {
@@ -90,7 +96,7 @@ export default function RecurringPage() {
     mutationFn: deleteRecurring,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RECURRING] }),
   })
-  const { register, handleSubmit, setValue, watch } = useForm({ defaultValues: { cycle: 'monthly' } })
+  const { register, handleSubmit, setValue, watch, reset } = useForm({ defaultValues: { cycle: 'monthly' } })
   const cycle = watch('cycle')
 
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
@@ -105,6 +111,7 @@ export default function RecurringPage() {
     setIsFormOpen(false)
     setSelectedType('')
     setDueDay(0)
+    reset({ cycle: 'monthly' })
   }
 
   const handleCreate = (data) => {
