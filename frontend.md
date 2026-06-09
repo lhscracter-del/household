@@ -366,19 +366,6 @@ export const QUERY_KEYS = {
 
 ---
 
-## 개발 서버 실행
-
-```bash
-npm install
-npm run dev        # http://localhost:5173
-
-npm run build      # 프로덕션 빌드
-npm run preview    # 빌드 결과 미리보기
-npm run test       # Vitest 실행
-```
-
----
-
 ## 코드 컨벤션
 
 - 컴포넌트: PascalCase (`ExpenseForm.jsx`)

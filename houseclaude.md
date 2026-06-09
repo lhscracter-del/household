@@ -182,43 +182,79 @@ feature/*    # 기능 개발
 
 ## 로컬 개발 시작
 
-실행 방법
-
-# 전체 (Docker)
-docker-compose up -d
-
-# Backend만
-cd backend
-pip3 install -r requirements.txt
-cp .env.example .env   # .env 수정
-uvicorn main:app --reload
-
-# Frontend만
-cd frontend
-npm install
-cp .env.local.example .env.local
-npm run dev
-
-DB 마이그레이션은 PostgreSQL 준비 후:
-cd backend
-alembic revision --autogenerate -m "initial"
-alembic upgrade head
+### 1. PostgreSQL / Redis 실행 (Docker)
 
 ```bash
-# 전체 실행
-docker-compose up -d
+# PostgreSQL (5433 포트 — 기존 5432 충돌 방지)
+docker run -d \
+  --name household_postgres \
+  -e POSTGRES_USER=user \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=budget_db \
+  -p 5433:5432 \
+  postgres:16-alpine
 
-# Backend만
-cd backend && uvicorn main:app --reload
+# Redis
+docker run -d --name household_redis -p 6379:6379 redis:7-alpine
 
-# Frontend만
-cd frontend && npm run dev
+# 재실행 시 (컨테이너가 이미 존재하는 경우)
+docker start household_postgres household_redis
 ```
+
+### 2. Backend
+
+```bash
+cd backend
+
+# 최초 1회: 가상환경 생성 및 패키지 설치
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# .env 설정 (최초 1회)
+cp .env.example .env
+```
+
+`.env` 주요 값:
+
+```env
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5433/budget_db
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY=your-secret-key-here-change-in-production
+ALLOWED_ORIGINS=["http://localhost:5173"]
+```
+
+> `ALLOWED_ORIGINS`는 반드시 JSON 배열 형식(`["..."]`)으로 작성해야 합니다.
+
+```bash
+# 가상환경 활성화 (매 터미널 세션마다)
+source venv/bin/activate
+
+# 최초 1회: DB 마이그레이션
+alembic upgrade head
+
+# 개발 서버 실행
+uvicorn main:app --reload --port 8000
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+
+# 최초 1회
+npm install
+
+# 개발 서버 실행
+npm run dev
+```
+
+### 서비스 URL
 
 | 서비스 | URL |
 |--------|-----|
 | Frontend | http://localhost:5173 |
 | Backend API | http://localhost:8000 |
 | Swagger UI | http://localhost:8000/docs |
-| PostgreSQL | localhost:5432 |
+| PostgreSQL | localhost:5433 |
 | Redis | localhost:6379 |

@@ -116,6 +116,21 @@ async def get_by_payment(
     ]
 
 
+@router.get("/yearly-total", response_model=SummaryResponse)
+async def get_yearly_total(
+    year: int = Query(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(func.sum(Expense.amount), func.count(Expense.id)).where(
+            and_(Expense.user_id == current_user.id, extract("year", Expense.date) == year)
+        )
+    )
+    row = result.one()
+    return SummaryResponse(total=row[0] or 0, count=row[1] or 0)
+
+
 @router.get("/trend", response_model=List[TrendPoint])
 async def get_trend(
     type: str = Query(..., description="monthly | weekly | yearly"),
@@ -125,37 +140,41 @@ async def get_trend(
     db: AsyncSession = Depends(get_db),
 ):
     if type == "monthly":
-        rows = []
-        for m in range(1, 13):
-            result = await db.execute(
-                select(func.sum(Expense.amount)).where(
-                    and_(
-                        Expense.user_id == current_user.id,
-                        extract("year", Expense.date) == year,
-                        extract("month", Expense.date) == m,
-                    )
+        result = await db.execute(
+            select(
+                extract("month", Expense.date).label("m"),
+                func.sum(Expense.amount),
+            )
+            .where(
+                and_(
+                    Expense.user_id == current_user.id,
+                    extract("year", Expense.date) == year,
                 )
             )
-            rows.append(TrendPoint(label=f"{m}월", total=result.scalar() or 0))
-        return rows
+            .group_by(extract("month", Expense.date))
+            .order_by(extract("month", Expense.date))
+        )
+        month_map = {int(row[0]): int(row[1] or 0) for row in result.all()}
+        return [TrendPoint(label=f"{m}월", total=month_map.get(m, 0)) for m in range(1, 13)]
 
     if type == "weekly" and month:
-        rows = []
-        for w in range(1, 6):
-            start_day = (w - 1) * 7 + 1
-            end_day = w * 7
-            result = await db.execute(
-                select(func.sum(Expense.amount)).where(
-                    and_(
-                        Expense.user_id == current_user.id,
-                        extract("year", Expense.date) == year,
-                        extract("month", Expense.date) == month,
-                        extract("day", Expense.date) >= start_day,
-                        extract("day", Expense.date) <= end_day,
-                    )
+        week_expr = func.floor((extract("day", Expense.date) - 1) / 7 + 1)
+        result = await db.execute(
+            select(
+                week_expr.label("w"),
+                func.sum(Expense.amount),
+            )
+            .where(
+                and_(
+                    Expense.user_id == current_user.id,
+                    extract("year", Expense.date) == year,
+                    extract("month", Expense.date) == month,
                 )
             )
-            rows.append(TrendPoint(label=f"{w}주차", total=result.scalar() or 0))
-        return rows
+            .group_by(week_expr)
+            .order_by(week_expr)
+        )
+        week_map = {min(int(row[0]), 5): int(row[1] or 0) for row in result.all()}
+        return [TrendPoint(label=f"{w}주차", total=week_map.get(w, 0)) for w in range(1, 6)]
 
     return []

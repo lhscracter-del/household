@@ -18,14 +18,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true
       try {
-        const stored = JSON.parse(localStorage.getItem('auth-storage') || '{}')
-        const refreshToken = stored?.state?.refreshToken
+        const refreshToken = useAuthStore.getState().refreshToken
         if (refreshToken) {
           const { data } = await axios.post(
             `${api.defaults.baseURL}/api/auth/refresh`,
             { refresh_token: refreshToken }
           )
-          useAuthStore.getState().setAuth(data.access_token, useAuthStore.getState().user)
+          useAuthStore.getState().setAuth(data.access_token, data.refresh_token, useAuthStore.getState().user)
           original.headers.Authorization = `Bearer ${data.access_token}`
           return api(original)
         }

@@ -5,9 +5,10 @@ export const useAuthStore = create(
   persist(
     (set) => ({
       accessToken: null,
+      refreshToken: null,
       user: null,
-      setAuth: (token, user) => set({ accessToken: token, user }),
-      clearAuth: () => set({ accessToken: null, user: null }),
+      setAuth: (accessToken, refreshToken, user) => set({ accessToken, refreshToken, user }),
+      clearAuth: () => set({ accessToken: null, refreshToken: null, user: null }),
     }),
     { name: 'auth-storage' }
   )

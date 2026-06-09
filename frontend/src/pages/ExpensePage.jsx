@@ -7,7 +7,8 @@ import Modal from '../components/common/Modal'
 import Button from '../components/common/Button'
 
 export default function ExpensePage() {
-  const [filters, setFilters] = useState({})
+  const today = new Date().toISOString().slice(0, 10)
+  const [filters, setFilters] = useState({ start_date: today, end_date: today })
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
 
@@ -25,11 +26,11 @@ export default function ExpensePage() {
   }
 
   const handleEdit = (expense) => setEditTarget(expense)
-  const handleDelete = (id) => { if (confirm('삭제하시겠습니까?')) deleteExpense(id) }
+  const handleDelete = (id) => { if (confirm('이 항목을 삭제하시겠습니까? 삭제한 내역은 복구할 수 없어요.')) deleteExpense(id) }
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold text-gray-800">지출 관리</h2>
         <Button onClick={() => setIsFormOpen(true)}>+ 지출 추가</Button>
       </div>

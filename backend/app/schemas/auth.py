@@ -1,10 +1,17 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
-    nickname: str
+    name: str
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("비밀번호는 8자 이상이어야 합니다.")
+        return v
 
 
 class LoginRequest(BaseModel):
@@ -25,6 +32,6 @@ class RefreshRequest(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: str
-    nickname: str
+    name: str
 
     model_config = {"from_attributes": True}

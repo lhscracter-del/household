@@ -1,5 +1,5 @@
 export const formatAmount = (amount) =>
-  `${amount.toLocaleString('ko-KR')}원`
+  `${(amount ?? 0).toLocaleString('ko-KR')}원`
 
 export const formatDate = (dateStr) =>
   dateStr.replace(/-/g, '.')

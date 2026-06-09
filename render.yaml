@@ -1,0 +1,40 @@
+services:
+  # ── 백엔드 (FastAPI) ──────────────────────────────────────────
+  - type: web
+    name: household-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false        # Render 대시보드에서 직접 입력
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true  # Render가 자동 생성
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: APP_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        sync: false        # 프론트엔드 URL 확정 후 입력
+
+  # ── 프론트엔드 (React Static Site) ───────────────────────────
+  - type: web
+    name: household-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false        # 백엔드 URL 확정 후 입력 (예: https://household-backend.onrender.com)
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

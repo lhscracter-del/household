@@ -1,24 +1,25 @@
 from typing import Optional
 from pydantic import BaseModel
+from app.models.budget import BudgetType
 
 
 class BudgetCreate(BaseModel):
-    category_id: int
+    budget_type: BudgetType
     amount: int
     year: int
-    month: int
+    month: Optional[int] = None  # yearly이면 null
 
 
 class BudgetUpdate(BaseModel):
-    amount: Optional[int] = None
+    amount: int
 
 
 class BudgetResponse(BaseModel):
     id: int
     user_id: int
-    category_id: int
+    budget_type: BudgetType
     amount: int
     year: int
-    month: int
+    month: Optional[int]
 
     model_config = {"from_attributes": True}

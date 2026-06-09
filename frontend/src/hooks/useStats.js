@@ -2,6 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 import { QUERY_KEYS } from '../utils/queryKeys'
 import * as statsApi from '../api/stats'
 
+export function useYearlyTotal(year) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.STATS, 'yearly-total', year],
+    queryFn: () => statsApi.getYearlyTotal({ year }),
+    enabled: !!year,
+  })
+}
+
 export function useSummary(params) {
   return useQuery({
     queryKey: [QUERY_KEYS.STATS, 'summary', params],
