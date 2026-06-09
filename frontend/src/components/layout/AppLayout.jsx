@@ -17,7 +17,7 @@ export default function AppLayout() {
   }, [])
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="flex h-dvh bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {open && (
         <div
           className="fixed inset-0 z-30 bg-black/40 lg:hidden"
