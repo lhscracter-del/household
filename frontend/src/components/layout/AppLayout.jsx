@@ -25,13 +25,15 @@ export default function AppLayout() {
         />
       )}
 
-      <Sidebar open={open} onClose={() => setOpen(false)} />
+      <div className="flex flex-1 w-full max-w-[1280px] mx-auto overflow-hidden">
+        <Sidebar open={open} onClose={() => setOpen(false)} />
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Header open={open} onToggle={() => setOpen((v) => !v)} theme={theme} onThemeToggle={toggle} />
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
-          <Outlet />
-        </main>
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <Header open={open} onToggle={() => setOpen((v) => !v)} theme={theme} onThemeToggle={toggle} />
+          <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:py-6 lg:px-[120px]">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   )

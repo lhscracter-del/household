@@ -1,10 +1,10 @@
 import { clsx } from 'clsx'
 import { forwardRef } from 'react'
 
-const Input = forwardRef(function Input({ label, error, className, ...props }, ref) {
+const Input = forwardRef(function Input({ label, error, className, wrapperClassName, labelClassName, ...props }, ref) {
   return (
-    <div className="flex flex-col gap-1">
-      {label && <label className="text-sm font-medium text-gray-700 dark:text-gray-200">{label}</label>}
+    <div className={clsx('flex flex-col gap-1', wrapperClassName)}>
+      {label && <label className={labelClassName ?? 'text-sm font-medium text-gray-700 dark:text-gray-200'}>{label}</label>}
       <input
         ref={ref}
         className={clsx(
