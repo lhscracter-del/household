@@ -5,9 +5,9 @@ import Button from '../common/Button'
 import PaymentMethodSelect from '../common/PaymentMethodSelect'
 import { DAY_OPTIONS, WEEKDAY_OPTIONS, calcNextDueDate, extractDueDay } from '../../utils/recurring'
 
-const selectCls = 'w-full min-w-0 h-9 px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
-const narrowSelectCls = 'w-full min-w-0 h-9 px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
-const inputCls = 'min-w-0 h-9 px-2 py-1.5 text-sm'
+const selectCls = 'w-full min-w-0 h-11 px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
+const narrowSelectCls = 'w-full min-w-0 h-11 px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
+const inputCls = 'min-w-0 h-11 px-2 py-1.5 text-sm appearance-none'
 const labelCls = 'text-xs font-medium text-gray-700 dark:text-gray-200'
 
 export default function RecurringForm({ item, categories, paymentMethods, onSubmit, onCancel, isPending, submitLabel }) {
