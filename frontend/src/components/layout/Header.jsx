@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useLogout } from '../../hooks/useAuth'
 import Button from '../common/Button'
@@ -31,7 +32,7 @@ export default function Header({ open, onToggle, theme, onThemeToggle }) {
       </button>
 
       {/* 타이틀 (모바일) */}
-      <span className="text-base font-bold text-blue-600 lg:hidden">💼 가계부</span>
+      <Link to="/" className="text-base font-bold text-blue-600 lg:hidden">💼 가계부</Link>
 
       <div className="flex-1" />
 
