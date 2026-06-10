@@ -7,7 +7,7 @@ import { useRecurring } from '../hooks/useRecurring'
 import { PaymentBadge } from '../components/common/Badge'
 import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
-import { formatAmount, formatDate } from '../utils/format'
+import { formatAmount, formatDateWithWeekday, groupExpensesByDate } from '../utils/format'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { clsx } from 'clsx'
 
@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
 
   const recentFive = recentExpenses.slice(0, 5)
+  const recentGroups = groupExpensesByDate(recentFive)
   const monthlyBudget = budgets.find((b) => b.budget_type === 'monthly' && b.month === month)
 
   // 월 지출 (실제 기록된 지출)
@@ -123,19 +124,23 @@ export default function DashboardPage() {
         {expensesLoading ? (
           <Spinner size="sm" />
         ) : recentFive.length ? (
-          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
-            {recentFive.map((e) => (
-              <div key={e.id} className="flex items-center justify-between py-2.5">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatAmount(e.amount)}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-400 dark:text-gray-300">{formatDate(e.date)}</span>
-                    {e.memo && <span className="text-xs text-gray-400 dark:text-gray-300">· {e.memo}</span>}
-                  </div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            {recentGroups.map((group) => (
+              <div key={group.date} className="py-2">
+                <div className="mb-1">
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">{formatDateWithWeekday(group.date)}</span>
                 </div>
-                {pmMap[e.payment_method_id] && (
-                  <PaymentBadge paymentType={pmMap[e.payment_method_id].payment_type} name={pmMap[e.payment_method_id].name} />
-                )}
+                {group.items.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between py-1.5">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatAmount(e.amount)}</span>
+                      {e.memo && <span className="text-xs text-gray-400 dark:text-gray-300">{e.memo}</span>}
+                    </div>
+                    {pmMap[e.payment_method_id] && (
+                      <PaymentBadge paymentType={pmMap[e.payment_method_id].payment_type} name={pmMap[e.payment_method_id].name} />
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
