@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date as Date
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +14,8 @@ router = APIRouter()
 
 @router.get("", response_model=List[ExpenseResponse])
 async def get_expenses(
-    start_date: Optional[date] = Query(None),
-    end_date: Optional[date] = Query(None),
+    start_date: Optional[Date] = Query(None),
+    end_date: Optional[Date] = Query(None),
     payment_method_id: Optional[int] = Query(None),
     category_id: Optional[int] = Query(None),
     order: str = Query("desc"),
