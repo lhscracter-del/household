@@ -6,7 +6,7 @@ import { usePaymentMethods } from '../../hooks/usePaymentMethods'
 import { useCategories } from '../../hooks/useCategories'
 import { formatDateWithWeekday, groupExpensesByDate } from '../../utils/format'
 
-export default function ExpenseList({ expenses, isLoading, onEdit, onDelete }) {
+export default function ExpenseList({ expenses, isLoading, editingId, onEdit, onDelete, onEditSubmit, onEditCancel, isUpdating }) {
   const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: categories = [] } = useCategories()
   const pmMap = useMemo(
@@ -40,8 +40,14 @@ export default function ExpenseList({ expenses, isLoading, onEdit, onDelete }) {
               expense={expense}
               paymentMethodMap={pmMap}
               categoryMap={catMap}
+              categories={categories}
+              paymentMethods={paymentMethods}
+              isEditing={editingId === expense.id}
               onEdit={onEdit}
               onDelete={onDelete}
+              onEditSubmit={onEditSubmit}
+              onEditCancel={onEditCancel}
+              isUpdating={isUpdating}
             />
           ))}
         </div>

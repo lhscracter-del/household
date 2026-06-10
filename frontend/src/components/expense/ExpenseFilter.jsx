@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { usePaymentMethods } from '../../hooks/usePaymentMethods'
-import { PAYMENT_TYPE_LABELS } from '../../utils/constants'
+import PaymentMethodSelect from '../common/PaymentMethodSelect'
 import { clsx } from 'clsx'
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
@@ -22,17 +22,8 @@ function calcRange(range) {
   return { start_date: from.toISOString().slice(0, 10), end_date: end }
 }
 
-function groupByType(paymentMethods) {
-  return paymentMethods.reduce((acc, pm) => {
-    if (!acc[pm.payment_type]) acc[pm.payment_type] = []
-    acc[pm.payment_type].push(pm)
-    return acc
-  }, {})
-}
-
 export default function ExpenseFilter({ filters, order, onChange, onOrderChange }) {
   const { data: paymentMethods = [] } = usePaymentMethods()
-  const grouped = groupByType(paymentMethods)
   const [memoInput, setMemoInput] = useState(filters.memo || '')
 
   useEffect(() => {
@@ -107,20 +98,13 @@ export default function ExpenseFilter({ filters, order, onChange, onOrderChange 
 
       {/* 결제수단 + 날짜 직접 입력 */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <select
+        <PaymentMethodSelect
+          paymentMethods={paymentMethods}
+          includeAll
           className="w-full sm:w-auto px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100"
           value={filters.payment_method_id || ''}
           onChange={(e) => onChange({ ...filters, payment_method_id: e.target.value || undefined })}
-        >
-          <option value="">전체 결제수단</option>
-          {Object.entries(grouped).map(([type, methods]) => (
-            <optgroup key={type} label={PAYMENT_TYPE_LABELS[type] || type}>
-              {methods.map((pm) => (
-                <option key={pm.id} value={pm.id}>{pm.name}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        />
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <input
             type="date"

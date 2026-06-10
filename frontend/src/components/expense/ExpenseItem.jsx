@@ -1,9 +1,37 @@
+import { useEffect, useRef } from 'react'
 import { formatAmount } from '../../utils/format'
 import Button from '../common/Button'
+import ExpenseForm from './ExpenseForm'
 
-export default function ExpenseItem({ expense, paymentMethodMap, categoryMap, onEdit, onDelete }) {
+export default function ExpenseItem({
+  expense, paymentMethodMap, categoryMap, categories, paymentMethods,
+  isEditing, onEdit, onDelete, onEditSubmit, onEditCancel, isUpdating,
+}) {
   const pm = paymentMethodMap?.[expense.payment_method_id]
   const cat = categoryMap?.[expense.category_id]
+  const editRef = useRef(null)
+
+  useEffect(() => {
+    if (isEditing) {
+      editRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [isEditing])
+
+  if (isEditing) {
+    return (
+      <div ref={editRef} className="py-2 px-2 -mx-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 scroll-mt-20">
+        <ExpenseForm
+          item={expense}
+          categories={categories}
+          paymentMethods={paymentMethods}
+          onSubmit={onEditSubmit}
+          onCancel={onEditCancel}
+          isPending={isUpdating}
+          submitLabel="수정 저장"
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-between py-2 gap-2">
@@ -18,7 +46,7 @@ export default function ExpenseItem({ expense, paymentMethodMap, categoryMap, on
         )}
       </div>
       <div className="flex gap-1 flex-shrink-0">
-        <Button variant="ghost" size="sm" onClick={() => onEdit(expense)} className="px-3 py-2 min-h-[44px]">수정</Button>
+        <Button variant="ghost" size="sm" onClick={() => onEdit(expense.id)} className="px-3 py-2 min-h-[44px]">수정</Button>
         <Button variant="ghost" size="sm" onClick={() => onDelete(expense.id)} className="px-3 py-2 min-h-[44px] text-red-500 hover:text-red-600">삭제</Button>
       </div>
     </div>

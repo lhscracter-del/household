@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ConfirmModal from '../components/common/ConfirmModal'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getRecurring, createRecurring, updateRecurring, deleteRecurring } from '../api/recurring'
@@ -6,98 +6,25 @@ import { QUERY_KEYS } from '../utils/queryKeys'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { useCategories } from '../hooks/useCategories'
 import { formatAmount } from '../utils/format'
+import { downloadCsv, parseCsv } from '../utils/csv'
+import { calcNextDueDate, formatDueLabel } from '../utils/recurring'
 import { PaymentBadge } from '../components/common/Badge'
 import Button from '../components/common/Button'
-import Input from '../components/common/Input'
 import Spinner from '../components/common/Spinner'
 import EmptyState from '../components/common/EmptyState'
-import { useForm } from 'react-hook-form'
-import { PAYMENT_TYPE_OPTIONS } from '../utils/constants'
+import RecurringForm from '../components/recurring/RecurringForm'
 
-const selectCls = 'flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
-
-const DAY_OPTIONS = [
-  { value: 0, label: '미설정' },
-  ...Array.from({ length: 31 }, (_, i) => ({ value: i + 1, label: `${i + 1}일` })),
-]
-
-const WEEKDAY_OPTIONS = [
-  { value: 0, label: '미설정' },
-  { value: 1, label: '월요일' },
-  { value: 2, label: '화요일' },
-  { value: 3, label: '수요일' },
-  { value: 4, label: '목요일' },
-  { value: 5, label: '금요일' },
-  { value: 6, label: '토요일' },
-  { value: 7, label: '일요일' },
-]
-
-function localDateStr(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function calcNextDueDate(day, cycle) {
-  const today = new Date()
-  if (!day) return localDateStr(today)
-
-  if (cycle === 'monthly') {
-    const y = today.getFullYear()
-    const m = today.getMonth()
-    const lastDay = new Date(y, m + 1, 0).getDate()
-    const d = Math.min(day, lastDay)
-    const candidate = new Date(y, m, d)
-    if (candidate >= today) return localDateStr(candidate)
-    const nm = m + 1 > 11 ? 0 : m + 1
-    const ny = m + 1 > 11 ? y + 1 : y
-    const lastDay2 = new Date(ny, nm + 1, 0).getDate()
-    return localDateStr(new Date(ny, nm, Math.min(day, lastDay2)))
-  }
-
-  if (cycle === 'weekly') {
-    const jsDay = day === 7 ? 0 : day
-    const cur = today.getDay()
-    let diff = jsDay - cur
-    if (diff <= 0) diff += 7
-    const next = new Date(today)
-    next.setDate(today.getDate() + diff)
-    return localDateStr(next)
-  }
-
-  return localDateStr(today)
-}
-
-function formatDueLabel(item) {
-  if (item.cycle === 'monthly') {
-    const d = new Date(item.next_due_date).getUTCDate()
-    return `매월 ${d}일`
-  }
-  if (item.cycle === 'weekly') {
-    const DAYS = ['일', '월', '화', '수', '목', '금', '토']
-    const d = new Date(item.next_due_date).getUTCDay()
-    return `매주 ${DAYS[d]}요일`
-  }
-  return item.next_due_date
-}
-
-function extractDueDay(item) {
-  const date = new Date(item.next_due_date)
-  if (item.cycle === 'monthly') return date.getUTCDate()
-  if (item.cycle === 'weekly') {
-    const jsDay = date.getUTCDay()
-    return jsDay === 0 ? 7 : jsDay
-  }
-  return 0
-}
+const RECURRING_CSV_HEADERS = ['설명', '금액']
 
 export default function RecurringPage() {
-  const [editingItem, setEditingItem] = useState(null)
+  const [editingId, setEditingId] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
-  const [selectedType, setSelectedType] = useState(PAYMENT_TYPE_OPTIONS[0].value)
-  const [dueDay, setDueDay] = useState(0)
+  const [createKey, setCreateKey] = useState(0)
   const [deleteTargetId, setDeleteTargetId] = useState(null)
+  const [uploadMessage, setUploadMessage] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef(null)
+  const itemRefs = useRef({})
   const queryClient = useQueryClient()
   const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: categories = [] } = useCategories()
@@ -110,172 +37,140 @@ export default function RecurringPage() {
 
   const { mutate: create, isPending: isCreating } = useMutation({
     mutationFn: createRecurring,
-    onSuccess: () => { invalidate(); handleReset(true) },
+    onSuccess: () => { invalidate(); setFormOpen(false); setCreateKey((k) => k + 1) },
   })
   const { mutate: update, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, data }) => updateRecurring(id, data),
-    onSuccess: () => { invalidate(); handleReset(false) },
+    onSuccess: () => { invalidate(); setEditingId(null) },
   })
   const { mutate: remove } = useMutation({
     mutationFn: deleteRecurring,
     onSuccess: invalidate,
   })
-
-  const { register, handleSubmit, setValue, watch, reset } = useForm({ defaultValues: { cycle: 'monthly' } })
-  const cycle = watch('cycle', 'monthly')
-  const isPending = isCreating || isUpdating
+  const { mutateAsync: createBulk } = useMutation({ mutationFn: createRecurring })
 
   const pmMap = Object.fromEntries(paymentMethods.map((pm) => [pm.id, pm]))
   const catMap = Object.fromEntries(categories.map((c) => [c.id, c]))
-  const filteredMethods = paymentMethods.filter((pm) => pm.payment_type === selectedType)
 
-  // 신규 모드일 때 기본값 자동 설정
   useEffect(() => {
-    if (editingItem || !paymentMethods.length || !categories.length) return
-    const defaultPm = paymentMethods.find((pm) => pm.payment_type === PAYMENT_TYPE_OPTIONS[0].value)
-    const defaultCat = categories.find((c) => c.name === '기타')
-    if (defaultPm) setValue('payment_method_id', defaultPm.id)
-    if (defaultCat) setValue('category_id', defaultCat.id)
-  }, [editingItem, paymentMethods, categories])
-
-  const handleTypeChange = (e) => {
-    const type = e.target.value
-    setSelectedType(type)
-    const first = paymentMethods.find((pm) => pm.payment_type === type)
-    setValue('payment_method_id', first ? first.id : '')
-  }
-
-  const handleReset = (keepOpen = false) => {
-    setEditingItem(null)
-    if (!keepOpen) setFormOpen(false)
-    setSelectedType(PAYMENT_TYPE_OPTIONS[0].value)
-    setDueDay(0)
-    const defaultPm = paymentMethods.find((pm) => pm.payment_type === PAYMENT_TYPE_OPTIONS[0].value)
-    const defaultCat = categories.find((c) => c.name === '기타')
-    reset({
-      description: '',
-      amount: '',
-      cycle: 'monthly',
-      payment_method_id: defaultPm?.id ?? '',
-      category_id: defaultCat?.id ?? '',
-    })
-  }
-
-  const handleEdit = (item) => {
-    setEditingItem(item)
-    const pm = paymentMethods.find((p) => p.id === item.payment_method_id)
-    setSelectedType(pm?.payment_type ?? PAYMENT_TYPE_OPTIONS[0].value)
-    setDueDay(extractDueDay(item))
-    reset({
-      description: item.description,
-      amount: item.amount,
-      payment_method_id: item.payment_method_id ?? '',
-      category_id: item.category_id ?? '',
-      cycle: item.cycle,
-    })
-    setFormOpen(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const handleSave = (data) => {
-    const next_due_date = calcNextDueDate(dueDay, data.cycle)
-    if (editingItem) {
-      update({ id: editingItem.id, data: { ...data, next_due_date } })
-    } else {
-      create({ ...data, next_due_date })
+    if (editingId != null) {
+      itemRefs.current[editingId]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
+  }, [editingId])
+
+  const handleExportCsv = () => {
+    const headers = ['설명', '금액', '카테고리', '결제수단', '주기', '결제일']
+    const rows = items.map((item) => [
+      item.description,
+      item.amount,
+      catMap[item.category_id]?.name ?? '',
+      pmMap[item.payment_method_id]?.name ?? '',
+      item.cycle === 'monthly' ? '매월' : '매주',
+      formatDueLabel(item),
+    ])
+    downloadCsv('반복지출.csv', headers, rows)
   }
 
-  const dayOptions = cycle === 'weekly' ? WEEKDAY_OPTIONS : DAY_OPTIONS
+  const handleUploadClick = () => {
+    if (!categories.length || !paymentMethods.length) {
+      setUploadMessage('카테고리/결제수단이 먼저 등록되어 있어야 업로드할 수 있어요.')
+      return
+    }
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setUploadMessage('')
+    const text = await file.text()
+    const rows = parseCsv(text)
+    const [header, ...dataRows] = rows
+
+    if (!header || RECURRING_CSV_HEADERS.some((h, i) => header[i]?.trim() !== h)) {
+      setUploadMessage(`CSV 헤더는 "${RECURRING_CSV_HEADERS.join(',')}" 형식이어야 해요.`)
+      return
+    }
+
+    const categoryId = categories[0].id
+    const paymentMethodId = paymentMethods[0].id
+    const next_due_date = calcNextDueDate(10, 'monthly')
+    let successCount = 0
+    let failCount = 0
+
+    setIsUploading(true)
+    for (const row of dataRows) {
+      const [description, amountRaw] = row
+      const amount = Number(String(amountRaw).replace(/[^0-9-]/g, ''))
+      if (!description?.trim() || !amount) {
+        failCount += 1
+        continue
+      }
+      try {
+        await createBulk({
+          description: description.trim(),
+          amount,
+          cycle: 'monthly',
+          next_due_date,
+          category_id: categoryId,
+          payment_method_id: paymentMethodId,
+        })
+        successCount += 1
+      } catch {
+        failCount += 1
+      }
+    }
+    setIsUploading(false)
+    invalidate()
+    setUploadMessage(`업로드 완료: 성공 ${successCount}건, 실패 ${failCount}건`)
+  }
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">반복 지출</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">반복 지출</h2>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={handleExportCsv} disabled={!items.length}>CSV 내보내기</Button>
+          <Button variant="secondary" onClick={handleUploadClick} disabled={isUploading}>
+            {isUploading ? '업로드 중...' : 'CSV 업로드'}
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+        </div>
+      </div>
 
-      {/* 인라인 입력 폼 */}
+      {uploadMessage && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">{uploadMessage}</p>
+      )}
+
+      {/* 인라인 입력 폼 (신규 등록 전용) */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
         <button
           type="button"
-          onClick={() => { if (!editingItem) setFormOpen((v) => !v) }}
+          onClick={() => setFormOpen((v) => !v)}
           className="w-full flex items-center justify-between px-4 sm:px-5 py-4 text-left"
         >
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-            {editingItem ? `수정 중: ${editingItem.description}` : '새 항목 등록'}
-          </h3>
-          {!editingItem && (
-            <svg
-              className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${formOpen ? 'rotate-180' : ''}`}
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          )}
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">새 항목 등록</h3>
+          <svg
+            className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform duration-200 ${formOpen ? 'rotate-180' : ''}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </button>
 
-        {(formOpen || editingItem) && (
-        <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-gray-100 dark:border-gray-700 pt-4">
-        <form onSubmit={handleSubmit(handleSave)} className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input label="설명" {...register('description', { required: true })} />
-            <Input label="금액" type="number" {...register('amount', { required: true, valueAsNumber: true })} />
+        {formOpen && (
+          <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-gray-100 dark:border-gray-700 pt-4">
+            <RecurringForm
+              key={createKey}
+              categories={categories}
+              paymentMethods={paymentMethods}
+              onSubmit={(data) => create(data)}
+              isPending={isCreating}
+              submitLabel="등록"
+            />
           </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-200">결제 수단</label>
-            <div className="flex gap-2">
-              <select className={selectCls} value={selectedType} onChange={handleTypeChange}>
-                {PAYMENT_TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              <select className={selectCls} {...register('payment_method_id', { valueAsNumber: true })}>
-                {filteredMethods.map((pm) => (
-                  <option key={pm.id} value={pm.id}>{pm.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">카테고리</label>
-              <select className={selectCls} {...register('category_id', { valueAsNumber: true })}>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">주기</label>
-              <select className={selectCls} {...register('cycle', { required: true, onChange: () => setDueDay(0) })}>
-                <option value="monthly">매월</option>
-                <option value="weekly">매주</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {cycle === 'weekly' ? '결제 요일' : '결제일'}
-              </label>
-              <select className={selectCls} value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))}>
-                {dayOptions.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-1">
-            {editingItem && (
-              <Button type="button" variant="secondary" onClick={handleReset}>취소</Button>
-            )}
-            <Button type="submit" disabled={isPending}>
-              {isPending ? '저장 중...' : editingItem ? '수정 저장' : '등록'}
-            </Button>
-          </div>
-        </form>
-        </div>
         )}
       </div>
 
@@ -285,24 +180,39 @@ export default function RecurringPage() {
           {items.map((item) => {
             const pm = pmMap[item.payment_method_id]
             const cat = catMap[item.category_id]
-            const isEditing = editingItem?.id === item.id
+            const isEditing = editingId === item.id
             return (
               <div
                 key={item.id}
-                className={`flex items-center justify-between py-3 px-4 border-b border-gray-100 dark:border-gray-700 last:border-0 transition-colors ${isEditing ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                ref={(el) => { itemRefs.current[item.id] = el }}
+                className={`px-4 py-3 border-b border-gray-100 dark:border-gray-700 last:border-0 transition-colors scroll-mt-20 ${isEditing ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
               >
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{item.description} — {formatAmount(item.amount)}</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {cat && <span className="text-xs text-gray-500 dark:text-gray-400">{cat.icon} {cat.name}</span>}
-                    {pm && <PaymentBadge paymentType={pm.payment_type} name={pm.name} />}
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{formatDueLabel(item)}</span>
+                {isEditing ? (
+                  <RecurringForm
+                    item={item}
+                    categories={categories}
+                    paymentMethods={paymentMethods}
+                    onSubmit={(data) => update({ id: item.id, data })}
+                    onCancel={() => setEditingId(null)}
+                    isPending={isUpdating}
+                    submitLabel="수정 저장"
+                  />
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{item.description} — {formatAmount(item.amount)}</p>
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 mt-1">
+                        {cat && <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{cat.icon} {cat.name}</span>}
+                        {pm && <PaymentBadge paymentType={pm.payment_type} name={pm.name} />}
+                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDueLabel(item)}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingId(item.id)}>수정</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteTargetId(item.id)} className="text-red-500">삭제</Button>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} disabled={isEditing}>수정</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setDeleteTargetId(item.id)} className="text-red-500">삭제</Button>
-                </div>
+                )}
               </div>
             )
           })}

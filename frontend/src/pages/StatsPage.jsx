@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useByCategory, useByPayment, useTrend } from '../hooks/useStats'
 import TrendChart from '../components/stats/TrendChart'
 import CategoryChart from '../components/stats/CategoryChart'
@@ -13,39 +13,96 @@ const TREND_TABS = [
 
 const selectCls = 'px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-blue-500 outline-none bg-white dark:bg-gray-700 dark:text-gray-100'
 
+// 해당 날짜가 월 중 몇 주차인지 계산 (1~5)
+function getWeekOfMonth(date) {
+  return Math.min(Math.floor((date.getDate() - 1) / 7) + 1, 5)
+}
+
+// 연/월/주차에 해당하는 날짜 범위 계산
+function getWeekRange(year, month, week) {
+  const lastDay = new Date(year, month, 0).getDate()
+  const startDay = (week - 1) * 7 + 1
+  if (startDay > lastDay) return null
+  const endDay = Math.min(week * 7, lastDay)
+  const pad = (n) => String(n).padStart(2, '0')
+  return {
+    start_date: `${year}-${pad(month)}-${pad(startDay)}`,
+    end_date: `${year}-${pad(month)}-${pad(endDay)}`,
+  }
+}
+
+// 기본 선택 주차: 조회 중인 연/월이 이번 달이면 현재 주, 아니면 1주차
+function getDefaultWeek(year, month, now) {
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
+  return isCurrentMonth ? getWeekOfMonth(now) : 1
+}
+
+// 기본 선택 월: 조회 중인 연도가 올해면 이번 달, 아니면 1월
+function getDefaultMonth(year, now) {
+  return year === now.getFullYear() ? now.getMonth() + 1 : 1
+}
+
 export default function StatsPage() {
   const now = useMemo(() => new Date(), [])
   const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth() + 1)
   const [trendType, setTrendType] = useState('monthly')
+  const [selectedMonth, setSelectedMonth] = useState(() => getDefaultMonth(year, now))
+  const [selectedWeek, setSelectedWeek] = useState(() => getDefaultWeek(year, selectedMonth, now))
 
-  const { data: categoryData, isLoading: isCategoryLoading } = useByCategory({ year, month })
-  const { data: paymentData, isLoading: isPaymentLoading } = useByPayment({ year, month })
+  // 연도가 바뀌면 기본 선택 월(이번 달 또는 1월)로 초기화
+  useEffect(() => {
+    setSelectedMonth(getDefaultMonth(year, now))
+  }, [year, now])
+
+  // 주별 탭으로 전환하거나 선택 연/월이 바뀌면 기본 선택 주차(현재 주)로 초기화
+  useEffect(() => {
+    if (trendType === 'weekly') {
+      setSelectedWeek(getDefaultWeek(year, selectedMonth, now))
+    }
+  }, [trendType, year, selectedMonth, now])
+
+  const isWeekly = trendType === 'weekly'
+  const weekRange = isWeekly ? getWeekRange(year, selectedMonth, selectedWeek) : null
+
+  // 월별 데이터 (반복지출 섹션, 월별 모드의 일반지출 섹션에서 사용)
+  const { data: monthlyCategoryData, isLoading: isMonthlyCategoryLoading } = useByCategory({ year, month: selectedMonth })
+  const { data: monthlyPaymentData, isLoading: isMonthlyPaymentLoading } = useByPayment({ year, month: selectedMonth })
+
+  // 주별 모드: 선택한 주의 일반지출 데이터
+  const { data: weekCategoryData, isLoading: isWeekCategoryLoading } = useByCategory(weekRange ?? {})
+  const { data: weekPaymentData, isLoading: isWeekPaymentLoading } = useByPayment(weekRange ?? {})
+
   const { data: trendData, isLoading: isTrendLoading } = useTrend(
     trendType === 'monthly'
       ? { type: 'monthly', year }
-      : { type: 'weekly', year, month }
+      : { type: 'weekly', year, month: selectedMonth }
   )
 
+  const categoryData = isWeekly ? weekCategoryData : monthlyCategoryData
+  const paymentData = isWeekly ? weekPaymentData : monthlyPaymentData
+  const isCategoryLoading = isWeekly ? isWeekCategoryLoading : isMonthlyCategoryLoading
+  const isPaymentLoading = isWeekly ? isWeekPaymentLoading : isMonthlyPaymentLoading
+
   const expenseCategoryData = categoryData?.filter((c) => c.expense_total > 0) ?? []
-  const recurringCategoryData = categoryData?.filter((c) => c.recurring_total > 0) ?? []
+  const recurringCategoryData = monthlyCategoryData?.filter((c) => c.recurring_total > 0) ?? []
   const hasRecurring = recurringCategoryData.length > 0
 
   const totalByCategory = expenseCategoryData.reduce((s, c) => s + c.expense_total, 0)
   const totalRecurringByCategory = recurringCategoryData.reduce((s, c) => s + c.recurring_total, 0)
 
+  const expenseTitleSuffix = isWeekly ? `${selectedWeek}주차 ` : ''
+  const expenseEmptyMessage = isWeekly ? '이 주의 지출 데이터가 없습니다.' : '일반 지출 데이터가 없습니다.'
+
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">통계</h2>
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">통계</h2>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{selectedMonth}월 소비</span>
+        </div>
         <div className="flex gap-2">
           <select className={selectCls} value={year} onChange={(e) => setYear(Number(e.target.value))}>
             {Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i).map((y) => <option key={y} value={y}>{y}년</option>)}
-          </select>
-          <select className={selectCls} value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={m}>{m}월</option>
-            ))}
           </select>
         </div>
       </div>
@@ -74,8 +131,13 @@ export default function StatsPage() {
         <TrendChart
           data={trendData}
           isLoading={isTrendLoading}
-          title={trendType === 'monthly' ? `${year}년 월별 소비` : `${year}년 ${month}월 주별 소비`}
+          title={trendType === 'monthly' ? `${year}년 월별 소비` : `${year}년 ${selectedMonth}월 주별 소비`}
+          onBarClick={isWeekly ? (index) => setSelectedWeek(index + 1) : (index) => setSelectedMonth(index + 1)}
+          selectedIndex={isWeekly ? selectedWeek - 1 : selectedMonth - 1}
         />
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
+          {isWeekly ? '막대를 클릭하면 해당 주의 일반 지출 통계를 볼 수 있어요.' : '막대를 클릭하면 해당 월의 일반 지출 통계를 볼 수 있어요.'}
+        </p>
       </div>
 
       {/* 일반 지출 그룹 */}
@@ -90,30 +152,30 @@ export default function StatsPage() {
             data={categoryData}
             isLoading={isCategoryLoading}
             dataKey="expense_total"
-            title="카테고리별 지출"
-            emptyMessage="일반 지출 데이터가 없습니다."
+            title={`${expenseTitleSuffix}카테고리별 지출`}
+            emptyMessage={expenseEmptyMessage}
             colorScheme="expense"
           />
           <PaymentChart
             data={paymentData}
             isLoading={isPaymentLoading}
             dataKey="expense_total"
-            title="결제 수단별 지출"
-            emptyMessage="일반 지출 데이터가 없습니다."
+            title={`${expenseTitleSuffix}결제 수단별 지출`}
+            emptyMessage={expenseEmptyMessage}
             colorScheme="expense"
           />
         </div>
 
         {!expenseCategoryData.length && !isCategoryLoading && (
           <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
-            이번 달 지출 데이터가 없어요. 지출을 기록하면 통계가 표시됩니다.
+            {isWeekly ? '이 주에 지출 데이터가 없어요.' : '이번 달 지출 데이터가 없어요.'} 지출을 기록하면 통계가 표시됩니다.
           </div>
         )}
 
         {/* 일반 지출 상세 테이블 */}
         {expenseCategoryData.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 sm:mb-4">일반 지출 상세</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 sm:mb-4">{expenseTitleSuffix}일반 지출 상세</h3>
             <div className="flex flex-col gap-2">
               {expenseCategoryData.map((item) => {
                 const ratio = totalByCategory ? (item.expense_total / totalByCategory * 100).toFixed(1) : 0
@@ -148,16 +210,16 @@ export default function StatsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <CategoryChart
-              data={categoryData}
-              isLoading={isCategoryLoading}
+              data={monthlyCategoryData}
+              isLoading={isMonthlyCategoryLoading}
               dataKey="recurring_total"
               title="카테고리별 반복지출"
               emptyMessage="반복지출 데이터가 없습니다."
               colorScheme="recurring"
             />
             <PaymentChart
-              data={paymentData}
-              isLoading={isPaymentLoading}
+              data={monthlyPaymentData}
+              isLoading={isMonthlyPaymentLoading}
               dataKey="recurring_total"
               title="결제 수단별 반복지출"
               emptyMessage="반복지출 데이터가 없습니다."

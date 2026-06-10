@@ -22,7 +22,7 @@ export function useByCategory(params) {
   return useQuery({
     queryKey: [QUERY_KEYS.STATS, 'by-category', params],
     queryFn: () => statsApi.getByCategory(params),
-    enabled: !!(params.year && params.month),
+    enabled: !!((params.year && params.month) || (params.start_date && params.end_date)),
   })
 }
 
@@ -30,7 +30,7 @@ export function useByPayment(params) {
   return useQuery({
     queryKey: [QUERY_KEYS.STATS, 'by-payment', params],
     queryFn: () => statsApi.getByPayment(params),
-    enabled: !!(params.year && params.month),
+    enabled: !!((params.year && params.month) || (params.start_date && params.end_date)),
   })
 }
 
