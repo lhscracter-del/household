@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { usePaymentMethods } from '../../hooks/usePaymentMethods'
 import { PAYMENT_TYPE_LABELS } from '../../utils/constants'
 import { clsx } from 'clsx'
@@ -32,6 +33,21 @@ function groupByType(paymentMethods) {
 export default function ExpenseFilter({ filters, order, onChange, onOrderChange }) {
   const { data: paymentMethods = [] } = usePaymentMethods()
   const grouped = groupByType(paymentMethods)
+  const [memoInput, setMemoInput] = useState(filters.memo || '')
+
+  useEffect(() => {
+    setMemoInput(filters.memo || '')
+  }, [filters.memo])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (memoInput !== (filters.memo || '')) {
+        onChange({ ...filters, memo: memoInput || undefined })
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoInput])
 
   const activeRange = RANGES.find((r) => {
     const { start_date } = calcRange(r)
@@ -79,6 +95,15 @@ export default function ExpenseFilter({ filters, order, onChange, onOrderChange 
           ))}
         </div>
       </div>
+
+      {/* 메모 검색 */}
+      <input
+        type="text"
+        placeholder="메모 검색"
+        className={inputCls}
+        value={memoInput}
+        onChange={(e) => setMemoInput(e.target.value)}
+      />
 
       {/* 결제수단 + 날짜 직접 입력 */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

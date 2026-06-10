@@ -2,7 +2,7 @@ from datetime import date as Date
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
@@ -18,6 +18,7 @@ async def get_expenses(
     end_date: Optional[Date] = Query(None),
     payment_method_id: Optional[int] = Query(None),
     category_id: Optional[int] = Query(None),
+    memo: Optional[str] = Query(None),
     order: str = Query("desc"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -31,6 +32,8 @@ async def get_expenses(
         conditions.append(Expense.payment_method_id == payment_method_id)
     if category_id:
         conditions.append(Expense.category_id == category_id)
+    if memo:
+        conditions.append(func.lower(Expense.memo).contains(memo.lower()))
 
     # 같은 날짜 내에서도 순서가 결정적이도록 id를 보조 정렬키로 추가
     if order == "asc":

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ConfirmModal from '../components/common/ConfirmModal'
-import { useCategories, useCreateCategory, useDeleteCategory } from '../hooks/useCategories'
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories'
 import {
   usePaymentMethods,
   useCreatePaymentMethod,
@@ -31,18 +31,22 @@ const selectCls = 'px-3 py-2 border border-gray-300 dark:border-gray-600 rounded
 
 export default function SettingsPage() {
   const [isCatOpen, setIsCatOpen] = useState(false)
+  const [catEditTarget, setCatEditTarget] = useState(null)
   const [isPmOpen, setIsPmOpen] = useState(false)
+  const [pmEditTarget, setPmEditTarget] = useState(null)
   const [selectedEmoji, setSelectedEmoji] = useState('📦')
   const [selectedColor, setSelectedColor] = useState('#607D8B')
   const [confirmState, setConfirmState] = useState(null) // { message, onConfirm }
 
   const { data: categories = [], isLoading: catLoading } = useCategories()
   const { mutate: createCat, isPending: catPending } = useCreateCategory()
+  const { mutate: updateCat, isPending: catUpdating } = useUpdateCategory()
   const { mutate: removeCat } = useDeleteCategory()
   const { register: regCat, handleSubmit: handleCat, reset: resetCat } = useForm()
 
   const { data: paymentMethods = [], isLoading: pmLoading } = usePaymentMethods()
   const { mutate: createPm, isPending: pmPending } = useCreatePaymentMethod()
+  const { mutate: updatePm, isPending: pmUpdating } = useUpdatePaymentMethod()
   const { mutate: removePm } = useDeletePaymentMethod()
   const { register: regPm, handleSubmit: handlePm, reset: resetPm } = useForm()
 
@@ -53,15 +57,47 @@ export default function SettingsPage() {
     return acc
   }, {})
 
-  const handleCreateCat = (data) => {
-    createCat(
-      { ...data, icon: selectedEmoji, color: selectedColor },
-      { onSuccess: () => { setIsCatOpen(false); resetCat(); setSelectedEmoji('📦'); setSelectedColor('#607D8B') } }
-    )
+  const closeCatModal = () => {
+    setIsCatOpen(false)
+    setCatEditTarget(null)
+    resetCat()
+    setSelectedEmoji('📦')
+    setSelectedColor('#607D8B')
   }
 
-  const handleCreatePm = (data) => {
-    createPm(data, { onSuccess: () => { setIsPmOpen(false); resetPm() } })
+  const openCatEdit = (c) => {
+    resetCat({ name: c.name })
+    setSelectedEmoji(c.icon || '📦')
+    setSelectedColor(c.color || '#607D8B')
+    setCatEditTarget(c)
+  }
+
+  const handleCatSubmit = (data) => {
+    const payload = { ...data, icon: selectedEmoji, color: selectedColor }
+    if (catEditTarget) {
+      updateCat({ id: catEditTarget.id, ...payload }, { onSuccess: closeCatModal })
+    } else {
+      createCat(payload, { onSuccess: closeCatModal })
+    }
+  }
+
+  const closePmModal = () => {
+    setIsPmOpen(false)
+    setPmEditTarget(null)
+    resetPm()
+  }
+
+  const openPmEdit = (pm) => {
+    resetPm({ payment_type: pm.payment_type, name: pm.name })
+    setPmEditTarget(pm)
+  }
+
+  const handlePmSubmit = (data) => {
+    if (pmEditTarget) {
+      updatePm({ id: pmEditTarget.id, name: data.name }, { onSuccess: closePmModal })
+    } else {
+      createPm(data, { onSuccess: closePmModal })
+    }
   }
 
   return (
@@ -72,7 +108,7 @@ export default function SettingsPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-700 dark:text-gray-200">결제 수단 관리</h3>
-          <Button size="sm" onClick={() => setIsPmOpen(true)}>+ 추가</Button>
+          <Button size="sm" onClick={() => { resetPm({ payment_type: 'cash', name: '' }); setIsPmOpen(true) }}>+ 추가</Button>
         </div>
 
         {pmLoading ? <Spinner /> : (
@@ -91,14 +127,24 @@ export default function SettingsPage() {
                       {items.map((pm) => (
                         <div key={pm.id} className="flex items-center justify-between py-1.5 pl-5">
                           <span className="text-sm text-gray-800 dark:text-gray-200">{pm.name}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setConfirmState({ message: `'${pm.name}' 결제 수단을 삭제하시겠습니까?`, onConfirm: () => removePm(pm.id) })}
-                            className="text-red-500 text-xs"
-                          >
-                            삭제
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openPmEdit(pm)}
+                              className="text-blue-500 text-xs"
+                            >
+                              수정
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmState({ message: `'${pm.name}' 결제 수단을 삭제하시겠습니까?`, onConfirm: () => removePm(pm.id) })}
+                              className="text-red-500 text-xs"
+                            >
+                              삭제
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -114,7 +160,7 @@ export default function SettingsPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-700 dark:text-gray-200">카테고리 관리</h3>
-          <Button size="sm" onClick={() => setIsCatOpen(true)}>+ 추가</Button>
+          <Button size="sm" onClick={() => { resetCat({ name: '' }); setSelectedEmoji('📦'); setSelectedColor('#607D8B'); setIsCatOpen(true) }}>+ 추가</Button>
         </div>
 
         {catLoading ? <Spinner /> : (
@@ -129,9 +175,14 @@ export default function SettingsPage() {
                   <span className="text-sm text-gray-800 dark:text-gray-200">{c.name}</span>
                 </div>
                 {c.user_id && (
-                  <Button variant="ghost" size="sm"
-                    onClick={() => setConfirmState({ message: `'${c.icon} ${c.name}' 카테고리를 삭제하시겠습니까?`, onConfirm: () => removeCat(c.id) })}
-                    className="text-red-500 text-xs">삭제</Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm"
+                      onClick={() => openCatEdit(c)}
+                      className="text-blue-500 text-xs">수정</Button>
+                    <Button variant="ghost" size="sm"
+                      onClick={() => setConfirmState({ message: `'${c.icon} ${c.name}' 카테고리를 삭제하시겠습니까?`, onConfirm: () => removeCat(c.id) })}
+                      className="text-red-500 text-xs">삭제</Button>
+                  </div>
                 )}
               </div>
             ))}
@@ -139,19 +190,19 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* ── 결제 수단 추가 모달 ── */}
-      <Modal isOpen={isPmOpen} onClose={() => setIsPmOpen(false)} title="결제 수단 추가">
-        <form onSubmit={handlePm(handleCreatePm)} className="flex flex-col gap-4">
+      {/* ── 결제 수단 추가/수정 모달 ── */}
+      <Modal isOpen={isPmOpen || !!pmEditTarget} onClose={closePmModal} title={pmEditTarget ? '결제 수단 수정' : '결제 수단 추가'}>
+        <form onSubmit={handlePm(handlePmSubmit)} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">대분류</label>
-            <select className={selectCls} {...regPm('payment_type', { required: true })}>
+            <select className={selectCls} disabled={!!pmEditTarget} {...regPm('payment_type', { required: true })}>
               {PAYMENT_TYPE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
           </div>
           <Input label="이름 (예: 삼성카드, 국민체크)" {...regPm('name', { required: true })} placeholder="카드 별칭" />
-          <Button type="submit" disabled={pmPending}>{pmPending ? '저장 중...' : '저장'}</Button>
+          <Button type="submit" disabled={pmPending || pmUpdating}>{(pmPending || pmUpdating) ? '저장 중...' : '저장'}</Button>
         </form>
       </Modal>
 
@@ -162,9 +213,9 @@ export default function SettingsPage() {
         message={confirmState?.message ?? ''}
       />
 
-      {/* ── 카테고리 추가 모달 ── */}
-      <Modal isOpen={isCatOpen} onClose={() => setIsCatOpen(false)} title="카테고리 추가">
-        <form onSubmit={handleCat(handleCreateCat)} className="flex flex-col gap-5">
+      {/* ── 카테고리 추가/수정 모달 ── */}
+      <Modal isOpen={isCatOpen || !!catEditTarget} onClose={closeCatModal} title={catEditTarget ? '카테고리 수정' : '카테고리 추가'}>
+        <form onSubmit={handleCat(handleCatSubmit)} className="flex flex-col gap-5">
           <Input label="이름" {...regCat('name', { required: true })} placeholder="카테고리 이름" />
 
           <div className="flex flex-col gap-2">
@@ -197,7 +248,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <Button type="submit" disabled={catPending}>{catPending ? '저장 중...' : '저장'}</Button>
+          <Button type="submit" disabled={catPending || catUpdating}>{(catPending || catUpdating) ? '저장 중...' : '저장'}</Button>
         </form>
       </Modal>
     </div>

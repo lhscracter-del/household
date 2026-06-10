@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import * as authApi from '../api/auth'
 import api from '../api/axios'
+import { queryClient } from '../utils/queryClient'
 
 export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -37,6 +38,7 @@ export function useLogout() {
       try { await api.delete('/api/auth/logout', { data: { refresh_token: stored.refreshToken } }) } catch {}
     }
     clearAuth()
+    queryClient.clear()
     navigate('/login')
   }
 }

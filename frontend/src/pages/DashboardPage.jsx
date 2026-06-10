@@ -11,8 +11,6 @@ import { formatAmount, formatDate } from '../utils/format'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { clsx } from 'clsx'
 
-const CYCLE_LABELS = { monthly: '매월', weekly: '매주' }
-
 export default function DashboardPage() {
   const now = useMemo(() => new Date(), [])
   const year = now.getFullYear()
@@ -78,7 +76,10 @@ export default function DashboardPage() {
 
             {/* 고정 지출 */}
             <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-xl p-3 sm:p-4">
-              <p className="text-xs text-emerald-500 font-medium mb-1">고정 지출</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs text-emerald-500 font-medium">고정 지출</p>
+                <Link to="/recur" className="text-xs text-emerald-500 hover:underline">관리</Link>
+              </div>
               <p className="text-base sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">{formatAmount(monthlyRecurringTotal)}</p>
               <p className="text-xs text-emerald-400 mt-1">
                 {recurring.filter((r) => r.cycle === 'monthly').length}건 (매월)
@@ -113,77 +114,34 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* 최근 월 지출 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">최근 월 지출</h3>
-            <Link to="/expense" className="text-xs text-blue-500 hover:underline">전체 보기</Link>
-          </div>
-          {expensesLoading ? (
-            <Spinner size="sm" />
-          ) : recentFive.length ? (
-            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
-              {recentFive.map((e) => (
-                <div key={e.id} className="flex items-center justify-between py-2.5">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatAmount(e.amount)}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-400 dark:text-gray-300">{formatDate(e.date)}</span>
-                      {e.memo && <span className="text-xs text-gray-400 dark:text-gray-300">· {e.memo}</span>}
-                    </div>
-                  </div>
-                  {pmMap[e.payment_method_id] && (
-                    <PaymentBadge paymentType={pmMap[e.payment_method_id].payment_type} name={pmMap[e.payment_method_id].name} />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="최근 지출 내역이 없어요." />
-          )}
+      {/* 최근 월 지출 */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">최근 월 지출</h3>
+          <Link to="/expense" className="text-xs text-blue-500 hover:underline">전체 보기</Link>
         </div>
-
-        {/* 고정 지출 목록 */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">고정 지출</h3>
-            <Link to="/recur" className="text-xs text-blue-500 hover:underline">관리</Link>
-          </div>
-          {recurringLoading ? (
-            <Spinner size="sm" />
-          ) : recurring.length ? (
-            <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
-              {recurring.map((r) => (
-                <div key={r.id} className="flex items-center justify-between py-2.5">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{r.description}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-400 dark:text-gray-300">{CYCLE_LABELS[r.cycle]}</span>
-                      <span className="text-xs text-gray-300 dark:text-gray-500">·</span>
-                      {pmMap[r.payment_method_id] && (
-                        <span className="text-xs text-gray-400 dark:text-gray-300">{pmMap[r.payment_method_id].name}</span>
-                      )}
-                    </div>
+        {expensesLoading ? (
+          <Spinner size="sm" />
+        ) : recentFive.length ? (
+          <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-700">
+            {recentFive.map((e) => (
+              <div key={e.id} className="flex items-center justify-between py-2.5">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatAmount(e.amount)}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400 dark:text-gray-300">{formatDate(e.date)}</span>
+                    {e.memo && <span className="text-xs text-gray-400 dark:text-gray-300">· {e.memo}</span>}
                   </div>
-                  <span className={clsx(
-                    'text-sm font-semibold',
-                    r.cycle === 'monthly' ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-300'
-                  )}>
-                    {formatAmount(r.amount)}
-                  </span>
                 </div>
-              ))}
-              {/* 고정 지출 합계 */}
-              <div className="flex items-center justify-between pt-3">
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">매월 합계</span>
-                <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{formatAmount(monthlyRecurringTotal)}</span>
+                {pmMap[e.payment_method_id] && (
+                  <PaymentBadge paymentType={pmMap[e.payment_method_id].payment_type} name={pmMap[e.payment_method_id].name} />
+                )}
               </div>
-            </div>
-          ) : (
-            <EmptyState message="등록된 고정 지출이 없어요." />
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState message="최근 지출 내역이 없어요." />
+        )}
       </div>
     </div>
   )

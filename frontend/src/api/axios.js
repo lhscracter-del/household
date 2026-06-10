@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
+import { queryClient } from '../utils/queryClient'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
@@ -30,6 +31,7 @@ api.interceptors.response.use(
         }
       } catch {
         useAuthStore.getState().clearAuth()
+        queryClient.clear()
       }
     }
     return Promise.reject(error)
