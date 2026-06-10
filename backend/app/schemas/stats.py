@@ -14,6 +14,10 @@ class CategoryStat(BaseModel):
     category_name: str
     total: int
     count: int
+    expense_total: int
+    expense_count: int
+    recurring_total: int
+    recurring_count: int
 
 
 class PaymentStat(BaseModel):
@@ -22,6 +26,10 @@ class PaymentStat(BaseModel):
     payment_type: str
     total: int
     count: int
+    expense_total: int
+    expense_count: int
+    recurring_total: int
+    recurring_count: int
 
 
 class TrendPoint(BaseModel):

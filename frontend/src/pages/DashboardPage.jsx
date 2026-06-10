@@ -77,10 +77,10 @@ export default function DashboardPage() {
             </div>
 
             {/* 고정 지출 */}
-            <div className="bg-purple-50 dark:bg-purple-900/30 rounded-xl p-3 sm:p-4">
-              <p className="text-xs text-purple-500 font-medium mb-1">고정 지출</p>
-              <p className="text-base sm:text-xl font-bold text-purple-700 dark:text-purple-300">{formatAmount(monthlyRecurringTotal)}</p>
-              <p className="text-xs text-purple-400 mt-1">
+            <div className="bg-emerald-50 dark:bg-emerald-900/30 rounded-xl p-3 sm:p-4">
+              <p className="text-xs text-emerald-500 font-medium mb-1">고정 지출</p>
+              <p className="text-base sm:text-xl font-bold text-emerald-700 dark:text-emerald-300">{formatAmount(monthlyRecurringTotal)}</p>
+              <p className="text-xs text-emerald-400 mt-1">
                 {recurring.filter((r) => r.cycle === 'monthly').length}건 (매월)
               </p>
             </div>
@@ -168,7 +168,7 @@ export default function DashboardPage() {
                   </div>
                   <span className={clsx(
                     'text-sm font-semibold',
-                    r.cycle === 'monthly' ? 'text-purple-600 dark:text-purple-300' : 'text-gray-600 dark:text-gray-300'
+                    r.cycle === 'monthly' ? 'text-emerald-600 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-300'
                   )}>
                     {formatAmount(r.amount)}
                   </span>
@@ -177,7 +177,7 @@ export default function DashboardPage() {
               {/* 고정 지출 합계 */}
               <div className="flex items-center justify-between pt-3">
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">매월 합계</span>
-                <span className="text-sm font-bold text-purple-700 dark:text-purple-300">{formatAmount(monthlyRecurringTotal)}</span>
+                <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{formatAmount(monthlyRecurringTotal)}</span>
               </div>
             </div>
           ) : (

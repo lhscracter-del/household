@@ -80,19 +80,25 @@ async def get_by_category(
         .group_by(RecurringExpense.category_id, Category.name)
     )
 
-    totals: dict = defaultdict(lambda: {"name": "미분류", "total": 0, "count": 0})
+    totals: dict = defaultdict(lambda: {
+        "name": "미분류", "expense_total": 0, "expense_count": 0, "recurring_total": 0, "recurring_count": 0,
+    })
     for row in expense_result.all():
         totals[row[0]]["name"] = row[1] or "미분류"
-        totals[row[0]]["total"] += row[2] or 0
-        totals[row[0]]["count"] += row[3] or 0
+        totals[row[0]]["expense_total"] += row[2] or 0
+        totals[row[0]]["expense_count"] += row[3] or 0
     for row in recurring_result.all():
         totals[row[0]]["name"] = row[1] or "미분류"
-        totals[row[0]]["total"] += row[2] or 0
-        totals[row[0]]["count"] += row[3] or 0
+        totals[row[0]]["recurring_total"] += row[2] or 0
+        totals[row[0]]["recurring_count"] += row[3] or 0
 
     return sorted(
-        [CategoryStat(category_id=k, category_name=v["name"], total=v["total"], count=v["count"])
-         for k, v in totals.items()],
+        [CategoryStat(
+            category_id=k, category_name=v["name"],
+            total=v["expense_total"] + v["recurring_total"], count=v["expense_count"] + v["recurring_count"],
+            expense_total=v["expense_total"], expense_count=v["expense_count"],
+            recurring_total=v["recurring_total"], recurring_count=v["recurring_count"],
+        ) for k, v in totals.items()],
         key=lambda x: -x.total,
     )
 
@@ -130,22 +136,27 @@ async def get_by_payment(
         .group_by(RecurringExpense.payment_method_id, PaymentMethod.name, PaymentMethod.payment_type)
     )
 
-    totals: dict = defaultdict(lambda: {"name": "미분류", "type": "cash", "total": 0, "count": 0})
+    totals: dict = defaultdict(lambda: {
+        "name": "미분류", "type": "cash", "expense_total": 0, "expense_count": 0, "recurring_total": 0, "recurring_count": 0,
+    })
     for row in expense_result.all():
         totals[row[0]]["name"] = row[1] or "미분류"
         totals[row[0]]["type"] = row[2] or "cash"
-        totals[row[0]]["total"] += row[3] or 0
-        totals[row[0]]["count"] += row[4] or 0
+        totals[row[0]]["expense_total"] += row[3] or 0
+        totals[row[0]]["expense_count"] += row[4] or 0
     for row in recurring_result.all():
         totals[row[0]]["name"] = row[1] or "미분류"
         totals[row[0]]["type"] = row[2] or "cash"
-        totals[row[0]]["total"] += row[3] or 0
-        totals[row[0]]["count"] += row[4] or 0
+        totals[row[0]]["recurring_total"] += row[3] or 0
+        totals[row[0]]["recurring_count"] += row[4] or 0
 
     return sorted(
-        [PaymentStat(payment_method_id=k, payment_method_name=v["name"], payment_type=v["type"],
-                     total=v["total"], count=v["count"])
-         for k, v in totals.items()],
+        [PaymentStat(
+            payment_method_id=k, payment_method_name=v["name"], payment_type=v["type"],
+            total=v["expense_total"] + v["recurring_total"], count=v["expense_count"] + v["recurring_count"],
+            expense_total=v["expense_total"], expense_count=v["expense_count"],
+            recurring_total=v["recurring_total"], recurring_count=v["recurring_count"],
+        ) for k, v in totals.items()],
         key=lambda x: -x.total,
     )
 

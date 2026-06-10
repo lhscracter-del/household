@@ -36,7 +36,7 @@ export default function Header({ open, onToggle, theme, onThemeToggle }) {
       <div className="flex-1" />
 
       {user && (
-        <span className="text-sm text-gray-600 dark:text-gray-300 hidden sm:block truncate max-w-[120px]">
+        <span className="text-sm text-gray-600 dark:text-gray-300  sm:block truncate max-w-[120px]">
           {user.name || user.email}
         </span>
       )}
