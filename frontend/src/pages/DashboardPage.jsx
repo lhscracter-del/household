@@ -132,13 +132,13 @@ export default function DashboardPage() {
                 </div>
                 {group.items.map((e) => (
                   <div key={e.id} className="flex items-center justify-between py-1.5">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatAmount(e.amount)}</span>
-                      {e.memo && <span className="text-xs text-gray-400 dark:text-gray-300">{e.memo}</span>}
-                    </div>
                     {pmMap[e.payment_method_id] && (
                       <PaymentBadge paymentType={pmMap[e.payment_method_id].payment_type} name={pmMap[e.payment_method_id].name} />
                     )}
+                    <div className="flex flex-col gap-0.5 items-end">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatAmount(e.amount)}</span>
+                      {e.memo && <span className="text-xs text-gray-400 dark:text-gray-300">{e.memo}</span>}
+                    </div>
                   </div>
                 ))}
               </div>
