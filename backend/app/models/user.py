@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from app.core.database import Base
 
 
@@ -10,4 +10,5 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     name = Column(String(100), nullable=False)
+    household_id = Column(Integer, ForeignKey("households.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)

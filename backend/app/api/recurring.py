@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, nullslast
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_household_user_ids
 from app.models.user import User
 from app.models.recurring import RecurringExpense
 from app.schemas.recurring import RecurringCreate, RecurringUpdate, RecurringResponse
@@ -16,9 +16,10 @@ async def get_recurring(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
         select(RecurringExpense)
-        .where(RecurringExpense.user_id == current_user.id)
+        .where(RecurringExpense.user_id.in_(household_user_ids))
         .order_by(nullslast(RecurringExpense.category_id.asc()), RecurringExpense.next_due_date.asc())
     )
     return result.scalars().all()
@@ -44,9 +45,10 @@ async def update_recurring(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
         select(RecurringExpense).where(
-            RecurringExpense.id == recurring_id, RecurringExpense.user_id == current_user.id
+            RecurringExpense.id == recurring_id, RecurringExpense.user_id.in_(household_user_ids)
         )
     )
     recurring = result.scalar_one_or_none()
@@ -66,9 +68,10 @@ async def delete_recurring(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
         select(RecurringExpense).where(
-            RecurringExpense.id == recurring_id, RecurringExpense.user_id == current_user.id
+            RecurringExpense.id == recurring_id, RecurringExpense.user_id.in_(household_user_ids)
         )
     )
     recurring = result.scalar_one_or_none()

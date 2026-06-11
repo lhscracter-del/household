@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_household_user_ids
 from app.models.user import User
 from app.models.budget import Budget, BudgetType
 from app.schemas.budget import BudgetCreate, BudgetUpdate, BudgetResponse
@@ -17,7 +17,8 @@ async def get_budgets(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    conditions = [Budget.user_id == current_user.id]
+    household_user_ids = await get_household_user_ids(current_user, db)
+    conditions = [Budget.user_id.in_(household_user_ids)]
     if year:
         conditions.append(Budget.year == year)
     result = await db.execute(select(Budget).where(and_(*conditions)))
@@ -30,9 +31,10 @@ async def upsert_budget(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     # 같은 타입/연/월 예산이 있으면 금액만 업데이트
     conditions = [
-        Budget.user_id == current_user.id,
+        Budget.user_id.in_(household_user_ids),
         Budget.budget_type == body.budget_type,
         Budget.year == body.year,
     ]
@@ -64,8 +66,9 @@ async def update_budget(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
-        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
+        select(Budget).where(Budget.id == budget_id, Budget.user_id.in_(household_user_ids))
     )
     budget = result.scalar_one_or_none()
     if not budget:
@@ -82,8 +85,9 @@ async def delete_budget(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
-        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
+        select(Budget).where(Budget.id == budget_id, Budget.user_id.in_(household_user_ids))
     )
     budget = result.scalar_one_or_none()
     if not budget:

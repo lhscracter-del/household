@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, extract
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_household_user_ids
 from collections import defaultdict
 from app.models.user import User
 from app.models.expense import Expense
@@ -24,8 +24,9 @@ async def get_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     conditions = [
-        Expense.user_id == current_user.id,
+        Expense.user_id.in_(household_user_ids),
         extract("year", Expense.date) == year,
         extract("month", Expense.date) == month,
     ]
@@ -43,7 +44,7 @@ async def get_summary(
     prev_year = year if month > 1 else year - 1
     prev_result = await db.execute(
         select(func.sum(Expense.amount)).where(and_(
-            Expense.user_id == current_user.id,
+            Expense.user_id.in_(household_user_ids),
             extract("year", Expense.date) == prev_year,
             extract("month", Expense.date) == prev_month,
         ))
@@ -63,16 +64,17 @@ async def get_by_category(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     if start_date and end_date:
         expense_conditions = [
-            Expense.user_id == current_user.id,
+            Expense.user_id.in_(household_user_ids),
             Expense.date >= start_date,
             Expense.date <= end_date,
         ]
         include_recurring = False
     else:
         expense_conditions = [
-            Expense.user_id == current_user.id,
+            Expense.user_id.in_(household_user_ids),
             extract("year", Expense.date) == year,
             extract("month", Expense.date) == month,
         ]
@@ -98,7 +100,7 @@ async def get_by_category(
             select(RecurringExpense.category_id, Category.name, func.sum(RecurringExpense.amount), func.count(RecurringExpense.id))
             .outerjoin(Category, RecurringExpense.category_id == Category.id)
             .where(and_(
-                RecurringExpense.user_id == current_user.id,
+                RecurringExpense.user_id.in_(household_user_ids),
                 RecurringExpense.cycle == "monthly",
             ))
             .group_by(RecurringExpense.category_id, Category.name)
@@ -128,16 +130,17 @@ async def get_by_payment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     if start_date and end_date:
         expense_conditions = [
-            Expense.user_id == current_user.id,
+            Expense.user_id.in_(household_user_ids),
             Expense.date >= start_date,
             Expense.date <= end_date,
         ]
         include_recurring = False
     else:
         expense_conditions = [
-            Expense.user_id == current_user.id,
+            Expense.user_id.in_(household_user_ids),
             extract("year", Expense.date) == year,
             extract("month", Expense.date) == month,
         ]
@@ -170,7 +173,7 @@ async def get_by_payment(
             )
             .outerjoin(PaymentMethod, RecurringExpense.payment_method_id == PaymentMethod.id)
             .where(and_(
-                RecurringExpense.user_id == current_user.id,
+                RecurringExpense.user_id.in_(household_user_ids),
                 RecurringExpense.cycle == "monthly",
             ))
             .group_by(RecurringExpense.payment_method_id, PaymentMethod.name, PaymentMethod.payment_type)
@@ -198,9 +201,10 @@ async def get_yearly_total(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
         select(func.sum(Expense.amount), func.count(Expense.id)).where(
-            and_(Expense.user_id == current_user.id, extract("year", Expense.date) == year)
+            and_(Expense.user_id.in_(household_user_ids), extract("year", Expense.date) == year)
         )
     )
     row = result.one()
@@ -215,10 +219,11 @@ async def get_trend(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     if type == "monthly":
         result = await db.execute(
             select(extract("month", Expense.date).label("m"), func.sum(Expense.amount))
-            .where(and_(Expense.user_id == current_user.id, extract("year", Expense.date) == year))
+            .where(and_(Expense.user_id.in_(household_user_ids), extract("year", Expense.date) == year))
             .group_by(extract("month", Expense.date))
             .order_by(extract("month", Expense.date))
         )
@@ -230,7 +235,7 @@ async def get_trend(
         result = await db.execute(
             select(week_expr.label("w"), func.sum(Expense.amount))
             .where(and_(
-                Expense.user_id == current_user.id,
+                Expense.user_id.in_(household_user_ids),
                 extract("year", Expense.date) == year,
                 extract("month", Expense.date) == month,
             ))

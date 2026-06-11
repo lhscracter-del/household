@@ -10,6 +10,15 @@ import {
 import { useRestoreBackup } from '../hooks/useBackup'
 import { getBackup } from '../api/backup'
 import { useAuthStore } from '../store/authStore'
+import {
+  useHouseholdMembers,
+  useHouseholdInvitations,
+  useCreateHouseholdInvitation,
+  useAcceptHouseholdInvitation,
+  useRejectHouseholdInvitation,
+  useCancelHouseholdInvitation,
+  useLeaveHousehold,
+} from '../hooks/useHousehold'
 import Button from '../components/common/Button'
 import Input from '../components/common/Input'
 import Modal from '../components/common/Modal'
@@ -54,7 +63,39 @@ export default function SettingsPage() {
   const fileInputRef = useRef(null)
   const { mutate: restoreBackup, isPending: restoring } = useRestoreBackup()
   const userId = useAuthStore((s) => s.user?.id)
+  const userEmail = useAuthStore((s) => s.user?.email)
   const [lastBackupAt, setLastBackupAt] = useState(() => localStorage.getItem(lastBackupKey(userId)))
+
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteError, setInviteError] = useState(null)
+  const { data: members = [] } = useHouseholdMembers()
+  const { data: invitations = [] } = useHouseholdInvitations()
+  const { mutate: sendInvite, isPending: invitePending } = useCreateHouseholdInvitation()
+  const { mutate: acceptInvite } = useAcceptHouseholdInvitation()
+  const { mutate: rejectInvite } = useRejectHouseholdInvitation()
+  const { mutate: cancelInvite } = useCancelHouseholdInvitation()
+  const { mutate: leaveHousehold, isPending: leavingHousehold } = useLeaveHousehold()
+
+  const receivedInvitations = invitations.filter((i) => i.invitee_email === userEmail && i.status === 'pending')
+  const sentInvitations = invitations.filter((i) => i.inviter_id === userId && i.status === 'pending')
+
+  const handleSendInvite = (e) => {
+    e.preventDefault()
+    setInviteError(null)
+    const email = inviteEmail.trim()
+    if (!email) return
+    sendInvite(email, {
+      onSuccess: () => setInviteEmail(''),
+      onError: (err) => setInviteError(err?.response?.data?.detail || '초대 보내기에 실패했습니다.'),
+    })
+  }
+
+  const handleLeaveHousehold = () => {
+    setConfirmState({
+      message: '가족 공유에서 나가면 더 이상 다른 가족 구성원의 데이터를 공유하지 않으며, 내 데이터만 남은 새로운 가구로 분리됩니다. 계속하시겠습니까?',
+      onConfirm: () => leaveHousehold(),
+    })
+  }
 
   const { data: categories = [], isLoading: catLoading } = useCategories()
   const { mutate: createCat, isPending: catPending } = useCreateCategory()
@@ -173,94 +214,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 max-w-lg">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">설정</h2>
-
-      {/* ── 결제 수단 관리 ── */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-700 dark:text-gray-200">결제 수단 관리</h3>
-          <Button size="sm" onClick={() => { resetPm({ payment_type: 'cash', name: '' }); setIsPmOpen(true) }}>+ 추가</Button>
-        </div>
-
-        {pmLoading ? <Spinner /> : (
-          <div className="flex flex-col gap-4">
-            {PAYMENT_TYPE_OPTIONS.map(({ value, label }) => {
-              const items = pmGrouped[value] || []
-              return (
-                <div key={value}>
-                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
-                    {PAYMENT_TYPE_ICONS[value]} {label}
-                  </p>
-                  {items.length === 0 ? (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 pl-5">없음</p>
-                  ) : (
-                    <div className="flex flex-col gap-1">
-                      {items.map((pm) => (
-                        <div key={pm.id} className="flex items-center justify-between py-1.5 pl-5">
-                          <span className="text-sm text-gray-800 dark:text-gray-200">{pm.name}</span>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openPmEdit(pm)}
-                              className="text-blue-500 text-xs"
-                            >
-                              수정
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setConfirmState({ message: `'${pm.name}' 결제 수단을 삭제하시겠습니까?`, onConfirm: () => removePm(pm.id) })}
-                              className="text-red-500 text-xs"
-                            >
-                              삭제
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── 카테고리 관리 ── */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-700 dark:text-gray-200">카테고리 관리</h3>
-          <Button size="sm" onClick={() => { resetCat({ name: '' }); setSelectedEmoji('📦'); setSelectedColor('#607D8B'); setIsCatOpen(true) }}>+ 추가</Button>
-        </div>
-
-        {catLoading ? <Spinner /> : (
-          <div className="flex flex-col gap-2">
-            {categories.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-sm"
-                    style={{ backgroundColor: c.color ? `${c.color}30` : '#f3f4f6' }}>
-                    {c.icon}
-                  </span>
-                  <span className="text-sm text-gray-800 dark:text-gray-200">{c.name}</span>
-                </div>
-                {c.user_id && (
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm"
-                      onClick={() => openCatEdit(c)}
-                      className="text-blue-500 text-xs">수정</Button>
-                    <Button variant="ghost" size="sm"
-                      onClick={() => setConfirmState({ message: `'${c.icon} ${c.name}' 카테고리를 삭제하시겠습니까?`, onConfirm: () => removeCat(c.id) })}
-                      className="text-red-500 text-xs">삭제</Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* ── 데이터 백업 및 복원 ── */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
@@ -297,6 +252,190 @@ export default function SettingsPage() {
             {restoreMessage.text}
           </p>
         )}
+      </div>
+
+      {/* ── 가족 공유 ── */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+        <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-1">가족 공유</h3>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+          이메일로 가족을 초대해서 가계부 데이터를 함께 보고 편집할 수 있어요.
+        </p>
+
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
+            함께 사용 중인 멤버
+          </p>
+          <div className="flex flex-col gap-1">
+            {members.map((m) => (
+              <div key={m.id} className="flex items-center justify-between py-1.5">
+                <span className="text-sm text-gray-800 dark:text-gray-200">
+                  {m.name} <span className="text-xs text-gray-400 dark:text-gray-500">({m.email})</span>
+                  {m.id === userId && <span className="ml-1 text-xs text-blue-500">(나)</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {receivedInvitations.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
+              받은 초대
+            </p>
+            <div className="flex flex-col gap-1">
+              {receivedInvitations.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-gray-800 dark:text-gray-200">
+                    {inv.inviter_name}님의 초대
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" onClick={() => acceptInvite(inv.id)}>수락</Button>
+                    <Button variant="ghost" size="sm" onClick={() => rejectInvite(inv.id)} className="text-red-500 text-xs">
+                      거절
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {sentInvitations.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
+              보낸 초대
+            </p>
+            <div className="flex flex-col gap-1">
+              {sentInvitations.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-gray-800 dark:text-gray-200">{inv.invitee_email}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => cancelInvite(inv.id)}
+                    className="text-red-500 text-xs"
+                  >
+                    취소
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSendInvite} className="flex flex-col sm:flex-row gap-2 mb-2">
+          <Input
+            type="email"
+            placeholder="초대할 가족의 이메일"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            wrapperClassName="flex-1"
+          />
+          <Button type="submit" size="sm" disabled={invitePending || !inviteEmail.trim()}>
+            {invitePending ? '보내는 중...' : '초대 보내기'}
+          </Button>
+        </form>
+        {inviteError && <p className="text-xs text-red-500 mb-2">{inviteError}</p>}
+
+        {members.length > 1 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLeaveHousehold}
+            disabled={leavingHousehold}
+            className="text-red-500 border border-gray-300 dark:border-gray-600"
+          >
+            {leavingHousehold ? '처리 중...' : '가족 공유에서 나가기'}
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* ── 결제 수단 관리 ── */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-700 dark:text-gray-200">결제 수단 관리</h3>
+            <Button size="sm" onClick={() => { resetPm({ payment_type: 'cash', name: '' }); setIsPmOpen(true) }}>+ 추가</Button>
+          </div>
+
+          {pmLoading ? <Spinner /> : (
+            <div className="flex flex-col gap-4">
+              {PAYMENT_TYPE_OPTIONS.map(({ value, label }) => {
+                const items = pmGrouped[value] || []
+                return (
+                  <div key={value}>
+                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
+                      {PAYMENT_TYPE_ICONS[value]} {label}
+                    </p>
+                    {items.length === 0 ? (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 pl-5">없음</p>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        {items.map((pm) => (
+                          <div key={pm.id} className="flex items-center justify-between py-1.5 pl-5">
+                            <span className="text-sm text-gray-800 dark:text-gray-200">{pm.name}</span>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openPmEdit(pm)}
+                                className="text-blue-500 text-xs"
+                              >
+                                수정
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmState({ message: `'${pm.name}' 결제 수단을 삭제하시겠습니까?`, onConfirm: () => removePm(pm.id) })}
+                                className="text-red-500 text-xs"
+                              >
+                                삭제
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── 카테고리 관리 ── */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-700 dark:text-gray-200">카테고리 관리</h3>
+            <Button size="sm" onClick={() => { resetCat({ name: '' }); setSelectedEmoji('📦'); setSelectedColor('#607D8B'); setIsCatOpen(true) }}>+ 추가</Button>
+          </div>
+
+          {catLoading ? <Spinner /> : (
+            <div className="flex flex-col gap-2">
+              {categories.map((c) => (
+                <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                      style={{ backgroundColor: c.color ? `${c.color}30` : '#f3f4f6' }}>
+                      {c.icon}
+                    </span>
+                    <span className="text-sm text-gray-800 dark:text-gray-200">{c.name}</span>
+                  </div>
+                  {c.user_id && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm"
+                        onClick={() => openCatEdit(c)}
+                        className="text-blue-500 text-xs">수정</Button>
+                      <Button variant="ghost" size="sm"
+                        onClick={() => setConfirmState({ message: `'${c.icon} ${c.name}' 카테고리를 삭제하시겠습니까?`, onConfirm: () => removeCat(c.id) })}
+                        className="text-red-500 text-xs">삭제</Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── 결제 수단 추가/수정 모달 ── */}

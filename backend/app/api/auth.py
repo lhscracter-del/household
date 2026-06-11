@@ -12,26 +12,9 @@ from app.core.security import (
 from app.models.user import User
 from app.models.category import Category
 from app.models.payment_method import PaymentMethod
+from app.models.household import Household
+from app.core.defaults import DEFAULT_PAYMENT_METHODS, DEFAULT_CATEGORIES
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, UserResponse
-
-DEFAULT_PAYMENT_METHODS = [
-    {"payment_type": "cash",        "name": "현금",    "is_default": True},
-    {"payment_type": "check_card",  "name": "체크카드", "is_default": False},
-    {"payment_type": "credit_card", "name": "신용카드", "is_default": False},
-]
-
-DEFAULT_CATEGORIES = [
-    {"name": "식비",     "icon": "🍽️", "color": "#FF9800"},
-    {"name": "장보기",   "icon": "🛒", "color": "#4CAF50"},
-    {"name": "교통",     "icon": "🚌", "color": "#2196F3"},
-    {"name": "의료",     "icon": "🏥", "color": "#F44336"},
-    {"name": "쇼핑",     "icon": "🛍️", "color": "#E91E63"},
-    {"name": "문화/여가","icon": "🎬", "color": "#00BCD4"},
-    {"name": "구독",     "icon": "📱", "color": "#607D8B"},
-    {"name": "주거/관리","icon": "🏠", "color": "#795548"},
-    {"name": "교육",     "icon": "🎓", "color": "#3F51B5"},
-    {"name": "기타",     "icon": "📦", "color": "#9E9E9E"},
-]
 
 router = APIRouter()
 
@@ -51,10 +34,15 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="이미 사용 중인 이메일입니다.")
 
+    household = Household()
+    db.add(household)
+    await db.flush()  # household.id 확보
+
     user = User(
         email=body.email,
         hashed_password=hash_password(body.password),
         name=body.name,
+        household_id=household.id,
     )
     db.add(user)
     await db.flush()  # user.id 확보

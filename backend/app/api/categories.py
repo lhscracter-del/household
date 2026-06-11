@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_household_user_ids
 from app.models.user import User
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
@@ -16,9 +16,10 @@ async def get_categories(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
         select(Category).where(
-            or_(Category.user_id == current_user.id, Category.user_id.is_(None))
+            or_(Category.user_id.in_(household_user_ids), Category.user_id.is_(None))
         ).order_by(Category.id)
     )
     return result.scalars().all()
@@ -44,8 +45,9 @@ async def update_category(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
-        select(Category).where(Category.id == category_id, Category.user_id == current_user.id)
+        select(Category).where(Category.id == category_id, Category.user_id.in_(household_user_ids))
     )
     category = result.scalar_one_or_none()
     if not category:
@@ -64,8 +66,9 @@ async def delete_category(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
-        select(Category).where(Category.id == category_id, Category.user_id == current_user.id)
+        select(Category).where(Category.id == category_id, Category.user_id.in_(household_user_ids))
     )
     category = result.scalar_one_or_none()
     if not category:

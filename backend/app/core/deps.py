@@ -40,3 +40,9 @@ async def get_current_user(
             detail="사용자를 찾을 수 없습니다.",
         )
     return user
+
+
+async def get_household_user_ids(current_user: User, db: AsyncSession) -> list[int]:
+    """현재 사용자와 같은 가구(household)에 속한 모든 사용자 id 목록을 반환한다."""
+    result = await db.execute(select(User.id).where(User.household_id == current_user.household_id))
+    return [row[0] for row in result.all()]

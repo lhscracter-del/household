@@ -6,4 +6,6 @@ export const QUERY_KEYS = {
   RECURRING: 'recurring',
   PAYMENT_METHODS: 'payment-methods',
   USER: 'user',
+  HOUSEHOLD_MEMBERS: 'household-members',
+  HOUSEHOLD_INVITATIONS: 'household-invitations',
 }

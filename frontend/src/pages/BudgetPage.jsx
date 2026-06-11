@@ -123,7 +123,7 @@ export default function BudgetPage() {
   const yearlySpent = (yearlyTotal?.total ?? 0) + recurringMonthly * 12
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 max-w-2xl">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100">예산 관리</h2>
         <div className="flex gap-2">

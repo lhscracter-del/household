@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_household_user_ids
 from app.models.user import User
 from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseResponse
@@ -23,7 +23,8 @@ async def get_expenses(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    conditions = [Expense.user_id == current_user.id]
+    household_user_ids = await get_household_user_ids(current_user, db)
+    conditions = [Expense.user_id.in_(household_user_ids)]
     if start_date:
         conditions.append(Expense.date >= start_date)
     if end_date:
@@ -66,8 +67,9 @@ async def update_expense(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
-        select(Expense).where(Expense.id == expense_id, Expense.user_id == current_user.id)
+        select(Expense).where(Expense.id == expense_id, Expense.user_id.in_(household_user_ids))
     )
     expense = result.scalar_one_or_none()
     if not expense:
@@ -86,8 +88,9 @@ async def delete_expense(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    household_user_ids = await get_household_user_ids(current_user, db)
     result = await db.execute(
-        select(Expense).where(Expense.id == expense_id, Expense.user_id == current_user.id)
+        select(Expense).where(Expense.id == expense_id, Expense.user_id.in_(household_user_ids))
     )
     expense = result.scalar_one_or_none()
     if not expense:
